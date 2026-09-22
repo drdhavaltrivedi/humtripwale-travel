@@ -71,7 +71,7 @@ flowchart TD
 
     subgraph StateTier["State & Data Persistence Layer"]
         AppContext["AppContext (React Context Store)"]
-        LocalCache[("Browser LocalStorage Cache\n('humtrip_tours_catalog', 'humtrip_bookings')")]
+        LocalCache[("Browser LocalStorage Cache")]
         StaticData["Static Catalog Data (TOURS_DATA, BLOGS_DATA)"]
     end
 
@@ -118,28 +118,28 @@ erDiagram
         string slug UK
         string title
         string tagline
-        enum destination
-        enum category
+        string destination
+        string category
         string duration
         number durationDays
         string startingPoint
         string endingPoint
         number minAge
         string groupSize
-        enum difficulty
+        string difficulty
         number originalPrice
         number discountedPrice
         number rating
         number reviewCount
         string heroImage
-        stringArray galleryImages
-        stringArray departureDates
-        stringArray highlights
-        stringArray inclusions
-        stringArray exclusions
+        string galleryImages
+        string departureDates
+        string highlights
+        string inclusions
+        string exclusions
         string transportDetails
         string mealDetails
-        stringArray packingList
+        string packingList
         boolean isFeatured
         boolean isTrending
     }
@@ -150,13 +150,13 @@ erDiagram
         string description
         string meals
         string stay
-        stringArray activities
+        string activities
     }
 
     StayDetails {
         string hotelType
         string roomSharing
-        stringArray amenities
+        string amenities
     }
 
     Booking {
@@ -165,7 +165,7 @@ erDiagram
         string tourTitle
         string departureDate
         number travelersCount
-        stringArray travelerNames
+        string travelerNames
         string contactEmail
         string contactPhone
         number basePrice
@@ -187,7 +187,7 @@ erDiagram
         string travelDate
         string budget
         number travelers
-        enum status "New | Contacted | Quoted | Won | Lost"
+        string status
         string assignedTo
         string notes
         string createdAt
@@ -204,7 +204,7 @@ erDiagram
         string publishedDate
         string readTime
         string category
-        stringArray tags
+        string tags
     }
 ```
 
@@ -218,12 +218,12 @@ erDiagram
 sequenceDiagram
     autonumber
     actor Traveler as Traveler
-    participant Home as Homepage / Search
-    participant Catalog as /tours Catalog
-    participant Detail as /tours/[slug]
-    participant Checkout as /booking/[tourId]
-    participant Store as AppContext / Storage
-    participant Invoice as GST Invoice Engine
+    participant Home as "Homepage / Search"
+    participant Catalog as "Tour Catalog"
+    participant Detail as "Tour Detail"
+    participant Checkout as "Booking Engine"
+    participant Store as "AppContext Store"
+    participant Invoice as "GST Invoice Engine"
 
     Traveler->>Home: Enters destination, duration, or budget
     Home->>Catalog: Navigates with search & filter params
@@ -234,7 +234,7 @@ sequenceDiagram
     Traveler->>Checkout: Fills traveler names, phone, email
     Traveler->>Checkout: Selects add-ons (Bike upgrade, Double room) & promo code
     Traveler->>Checkout: Selects payment method (UPI / Razorpay / Card)
-    Checkout->>Store: Saves confirmed booking with unique ID & Invoice #
+    Checkout->>Store: Saves confirmed booking with unique ID & Invoice number
     Checkout->>Invoice: Renders printable official GST tax invoice
     Invoice-->>Traveler: Instant booking confirmation & downloadable invoice
 ```
@@ -245,21 +245,21 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start([User visits /custom-trip]) --> Step1[Step 1: Choose Destination & Trip Type]
-    Step1 --> Step2[Step 2: Select Travel Dates & Group Size]
-    Step2 --> Step3[Step 3: Choose Stay Preference & Budget Tier]
-    Step3 --> Step4[Step 4: Contact Details & Special Requests]
-    Step4 --> SubmitLead[Submit Custom Trip Request]
+    Start(["User visits /custom-trip"]) --> Step1["Step 1: Choose Destination & Trip Type"]
+    Step1 --> Step2["Step 2: Select Travel Dates & Group Size"]
+    Step2 --> Step3["Step 3: Choose Stay Preference & Budget Tier"]
+    Step3 --> Step4["Step 4: Contact Details & Special Requests"]
+    Step4 --> SubmitLead["Submit Custom Trip Request"]
     
-    SubmitLead --> PushCRM[AppContext: Append to Leads Pipeline]
-    PushCRM --> ToastNotify[Show Success Toast & WhatsApp Confirmation]
+    SubmitLead --> PushCRM["AppContext: Append to Leads Pipeline"]
+    PushCRM --> ToastNotify["Show Success Toast & WhatsApp Confirmation"]
     
     subgraph OperationsCRM["Admin & Operations CRM (/admin)"]
-        LeadNew[Status: NEW - Unassigned]
-        LeadContact[Status: CONTACTED - Sales Outreach]
-        LeadQuote[Status: QUOTED - Custom Itinerary Sent]
-        LeadWon[Status: WON - Payment Captured]
-        LeadLost[Status: LOST - Closed Lead]
+        LeadNew["Status: NEW - Unassigned"]
+        LeadContact["Status: CONTACTED - Sales Outreach"]
+        LeadQuote["Status: QUOTED - Custom Itinerary Sent"]
+        LeadWon["Status: WON - Payment Captured"]
+        LeadLost["Status: LOST - Closed Lead"]
         
         LeadNew --> LeadContact
         LeadContact --> LeadQuote
@@ -276,29 +276,29 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Admin([Admin logged in at /admin]) --> CMS[Tab 4: Tours Catalog CMS]
+    Admin(["Admin logged in at /admin"]) --> CMS["Tab 4: Tours Catalog CMS"]
     
-    CMS --> ActionChoice{Action}
+    CMS --> ActionChoice{"Action"}
     
-    ActionChoice -->|Create New| OpenCreateModal[Open Create Tour Modal]
-    ActionChoice -->|Edit Existing| OpenEditModal[Open Edit Tour Modal (Pre-populated)]
-    ActionChoice -->|Delete| ConfirmDelete[Confirm Deletion Dialog]
+    ActionChoice -->|Create New| OpenCreateModal["Open Create Tour Modal"]
+    ActionChoice -->|Edit Existing| OpenEditModal["Open Edit Tour Modal (Pre-populated)"]
+    ActionChoice -->|Delete| ConfirmDelete["Confirm Deletion Dialog"]
     
-    OpenCreateModal --> FormInput[Fill Title, Slug, Pricing, Route, Accommodations]
+    OpenCreateModal --> FormInput["Fill Title, Slug, Pricing, Route, Accommodations"]
     OpenEditModal --> FormInput
     
-    FormInput --> ItineraryBuilder[Interactive Day-by-Day Itinerary Builder]
-    ItineraryBuilder --> AddDay[+ Add Day: Title, Description, Meals, Stay]
-    ItineraryBuilder --> RemoveDay[Remove Day]
+    FormInput --> ItineraryBuilder["Interactive Day-by-Day Itinerary Builder"]
+    ItineraryBuilder --> AddDay["+ Add Day: Title, Description, Meals, Stay"]
+    ItineraryBuilder --> RemoveDay["Remove Day"]
     
-    AddDay --> SaveTour[Save Tour Package]
+    AddDay --> SaveTour["Save Tour Package"]
     RemoveDay --> SaveTour
     
-    SaveTour --> AppStateUpdate[Update AppContext Store]
-    AppStateUpdate --> LocalStorageSync[Sync to localStorage 'humtrip_tours_catalog']
+    SaveTour --> AppStateUpdate["Update AppContext Store"]
+    AppStateUpdate --> LocalStorageSync["Sync to localStorage humtrip_tours_catalog"]
     
-    LocalStorageSync --> LiveCatalogUpdate[Reflects instantly on /tours, /tours/:slug, & /booking/:tourId]
-    ConfirmDelete --> DeleteAction[Remove from store & LocalStorage]
+    LocalStorageSync --> LiveCatalogUpdate["Reflects instantly across /tours, /tours/:slug, and /booking/:tourId"]
+    ConfirmDelete --> DeleteAction["Remove from store & LocalStorage"]
 ```
 
 ---
