@@ -1,6 +1,18 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { TOURS_DATA, TourPackage } from "@/data/toursData";
+import {
+  fetchToursFromDb,
+  createTourInDb,
+  updateTourInDb,
+  deleteTourFromDb,
+  fetchLeadsFromDb,
+  createLeadInDb,
+  updateLeadStatusInDb,
+  fetchBookingsFromDb,
+  createBookingInDb,
+} from "@/lib/supabaseService";
 
 export type UserRole = "guest" | "traveler" | "sales" | "admin";
 
@@ -43,8 +55,6 @@ export interface Lead {
   assignedTo?: string;
   createdAt: string;
 }
-
-import { TOURS_DATA, TourPackage } from "@/data/toursData";
 
 interface AppContextType {
   user: UserProfile | null;
@@ -181,6 +191,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addBooking = (booking: Booking) => {
     setBookings((prev) => [booking, ...prev]);
+    createBookingInDb(booking).catch((err) =>
+      console.warn("Supabase createBooking notice:", err)
+    );
     showToast("Booking Confirmed! Check your email and WhatsApp.");
   };
 
@@ -193,6 +206,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       assignedTo: "Unassigned",
     };
     setLeads((prev) => [newLead, ...prev]);
+    createLeadInDb(newLead).catch((err) =>
+      console.warn("Supabase createLead notice:", err)
+    );
     showToast("Trip request sent! Our travel captain will call you shortly.");
   };
 
@@ -204,12 +220,16 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           : ld
       )
     );
+    updateLeadStatusInDb(leadId, status, notes).catch((err) =>
+      console.warn("Supabase updateLeadStatus notice:", err)
+    );
   };
 
   const [tours, setTours] = useState<TourPackage[]>(TOURS_DATA);
 
-  // Hydrate custom tour changes from localStorage
+  // Hydrate custom tour changes from localStorage, then live-sync with Supabase
   useEffect(() => {
+    // 1. Instant local cache hydration
     try {
       const saved = localStorage.getItem("humtrip_tours_catalog");
       if (saved) {
@@ -221,6 +241,36 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (e) {
       console.warn("Could not load tours from localStorage", e);
     }
+
+    // 2. Cloud sync from Supabase PostgreSQL
+    async function syncCloudData() {
+      try {
+        const [liveTours, liveLeads, liveBookings] = await Promise.all([
+          fetchToursFromDb(),
+          fetchLeadsFromDb(),
+          fetchBookingsFromDb(),
+        ]);
+
+        if (liveTours && liveTours.length > 0) {
+          setTours(liveTours);
+          try {
+            localStorage.setItem("humtrip_tours_catalog", JSON.stringify(liveTours));
+          } catch (e) {}
+        }
+
+        if (liveLeads && liveLeads.length > 0) {
+          setLeads(liveLeads);
+        }
+
+        if (liveBookings && liveBookings.length > 0) {
+          setBookings(liveBookings);
+        }
+      } catch (err) {
+        console.warn("Supabase live sync notice:", err);
+      }
+    }
+
+    syncCloudData();
   }, []);
 
   const saveTours = (newTours: TourPackage[]) => {
@@ -235,18 +285,27 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const addTour = (newTour: TourPackage) => {
     const updated = [newTour, ...tours];
     saveTours(updated);
+    createTourInDb(newTour).catch((err) =>
+      console.warn("Supabase createTour notice:", err)
+    );
     showToast(`Created new tour listing: "${newTour.title}"`);
   };
 
   const updateTour = (updatedTour: TourPackage) => {
     const updated = tours.map((t) => (t.id === updatedTour.id ? updatedTour : t));
     saveTours(updated);
+    updateTourInDb(updatedTour).catch((err) =>
+      console.warn("Supabase updateTour notice:", err)
+    );
     showToast(`Updated tour listing: "${updatedTour.title}"`);
   };
 
   const deleteTour = (tourId: string) => {
     const updated = tours.filter((t) => t.id !== tourId);
     saveTours(updated);
+    deleteTourFromDb(tourId).catch((err) =>
+      console.warn("Supabase deleteTour notice:", err)
+    );
     showToast("Tour listing deleted successfully.");
   };
 

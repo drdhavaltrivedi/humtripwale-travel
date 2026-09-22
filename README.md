@@ -71,8 +71,9 @@ flowchart TD
 
     subgraph StateTier["State & Data Persistence Layer"]
         AppContext["AppContext (React Context Store)"]
+        SupabaseDB[("Supabase Cloud PostgreSQL DB")]
         LocalCache[("Browser LocalStorage Cache")]
-        StaticData["Static Catalog Data (TOURS_DATA, BLOGS_DATA)"]
+        StaticData["Static Catalog Data Fallback"]
     end
 
     subgraph ExternalIntegrations["External Services & Integrations"]
@@ -91,6 +92,7 @@ flowchart TD
     UI_Admin --> AppLayout
 
     AppLayout --> AppContext
+    AppContext <--> SupabaseDB
     AppContext <--> LocalCache
     AppContext --> StaticData
 
