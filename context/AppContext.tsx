@@ -14,7 +14,7 @@ import {
   createBookingInDb,
 } from "@/lib/supabaseService";
 
-export type UserRole = "guest" | "traveler" | "sales" | "admin";
+export type UserRole = "guest" | "traveler" | "sales" | "admin" | "operations";
 
 export interface UserProfile {
   id: string;
@@ -165,13 +165,27 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     } else {
       setUser({
         id: "usr-1",
-        name: role === "admin" ? "Super Admin" : role === "sales" ? "Sales Executive" : "Aman Sharma",
-        email: role === "admin" ? "admin@humtripwale.com" : role === "sales" ? "sales@humtripwale.com" : "aman.traveler@example.com",
+        name:
+          role === "admin"
+            ? "Vikram Malhotra (Super Admin)"
+            : role === "sales"
+            ? "Karan Verma (Sales Lead)"
+            : role === "operations"
+            ? "Captain Aarav (Field Ops)"
+            : "Aman Sharma",
+        email:
+          role === "admin"
+            ? "admin@humtripwale.com"
+            : role === "sales"
+            ? "karan.sales@humtripwale.com"
+            : role === "operations"
+            ? "aarav.ops@humtripwale.com"
+            : "aman.traveler@example.com",
         phone: "+91 97552 16100",
         role,
       });
     }
-    showToast(`Switched view to ${role.toUpperCase()}`);
+    showToast(`Switched active workspace role to ${role.toUpperCase()}`);
   };
 
   const toggleWishlist = (tourId: string) => {

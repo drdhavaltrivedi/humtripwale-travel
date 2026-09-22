@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "www.humtripwale.com",
       },
+      {
+        protocol: "https",
+        hostname: "cpuozescydngqeopjncm.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+      },
     ],
   },
 };

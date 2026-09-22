@@ -66,8 +66,28 @@ function DashboardContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] pt-24 pb-20">
+    <div className="min-h-screen bg-[#FAF7F2] pt-28 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Internal Team Quick Bridge (Visible only for Staff Roles) */}
+        {user && user.role !== "traveler" && user.role !== "guest" && (
+          <div className="bg-[#0A192F] text-white px-5 py-3.5 rounded-2xl mb-6 flex flex-wrap items-center justify-between gap-3 border border-amber-500/30 shadow-md">
+            <div className="flex items-center gap-2.5 text-xs">
+              <span className="bg-[#FFA429] text-[#0A192F] font-extrabold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Staff Persona: {user.role.toUpperCase()}
+              </span>
+              <span className="text-slate-300">
+                You are currently previewing the customer-facing Traveler Dashboard.
+              </span>
+            </div>
+            <Link
+              href={user.role === "sales" ? "/admin?role=sales" : "/admin"}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#FFA429] hover:text-amber-300 transition-colors"
+            >
+              <span>Switch to {user.role === "sales" ? "Sales CRM Desk" : "Admin Operations"} Workspace →</span>
+            </Link>
+          </div>
+        )}
+
         {/* User Profile Header Card */}
         <div className="bg-[#0A192F] text-white rounded-3xl p-6 sm:p-8 border border-white/10 shadow-xl mb-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-5">
