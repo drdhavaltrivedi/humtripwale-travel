@@ -81,3 +81,54 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #FFA429;
 }
+
+/* Print-Specific Styles for PDF Generation */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm;
+  }
+  
+  html, body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-size: 11pt;
+  }
+
+  /* Suppress all web application chrome */
+  header,
+  footer,
+  nav,
+  [data-widget="quick-inquiry"],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Expand print canvas */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .print-invoice-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure background colors and borders display correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+

@@ -60,21 +60,21 @@ export default function Header() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 print:hidden ${
         isScrolled
           ? "bg-[#0A192F] shadow-xl py-3 border-b border-white/10"
           : "bg-[#0A192F] py-4 border-b border-white/5"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 flex items-center justify-between">
         {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+        <Link href="/" className="flex items-center gap-3 shrink-0 group mr-2">
           <div className="h-10 w-auto flex items-center">
             <Image 
               src="/logo.svg" 
               alt="HumTripWale" 
-              width={105} 
-              height={42} 
+              width={108} 
+              height={44} 
               className="h-10 w-auto object-contain drop-shadow-sm group-hover:opacity-95 transition-opacity"
               priority
             />
@@ -82,7 +82,7 @@ export default function Header() {
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2">
+        <nav className="hidden lg:flex items-center gap-1 xl:gap-2.5">
           {/* Tours Mega Menu Trigger */}
           <div 
             className="relative"
@@ -90,8 +90,8 @@ export default function Header() {
             onMouseLeave={() => setToursDropdownOpen(false)}
           >
             <button
-              className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                pathname.startsWith("/tours") ? "text-[#FFA429]" : "text-slate-100 hover:text-[#FFA429]"
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+                pathname.startsWith("/tours") ? "text-[#FFA429] bg-white/10" : "text-slate-100 hover:text-[#FFA429] hover:bg-white/5"
               }`}
             >
               <span>Tours</span>
@@ -127,8 +127,8 @@ export default function Header() {
             onMouseLeave={() => setDestinationsDropdownOpen(false)}
           >
             <button
-              className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                pathname.startsWith("/destinations") ? "text-[#FFA429]" : "text-slate-100 hover:text-[#FFA429]"
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+                pathname.startsWith("/destinations") ? "text-[#FFA429] bg-white/10" : "text-slate-100 hover:text-[#FFA429] hover:bg-white/5"
               }`}
             >
               <span>Destinations</span>
@@ -161,7 +161,9 @@ export default function Header() {
 
           <Link
             href="/tours?category=Weekend+Trips"
-            className="px-3 py-2 text-sm font-medium text-slate-100 hover:text-[#FFA429] transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              pathname.includes("Weekend") ? "text-[#FFA429] bg-white/10" : "text-slate-100 hover:text-[#FFA429] hover:bg-white/5"
+            }`}
           >
             <span>Weekend Trips</span>
             <span className="bg-[#FFA429]/20 text-[#FFA429] text-[10px] font-bold px-1.5 py-0.5 rounded-full">
@@ -171,28 +173,34 @@ export default function Header() {
 
           <Link
             href="/custom-trip"
-            className="px-3 py-2 text-sm font-medium text-slate-100 hover:text-[#FFA429] transition-colors whitespace-nowrap"
+            className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+              pathname === "/custom-trip" ? "text-[#FFA429] bg-white/10" : "text-slate-100 hover:text-[#FFA429] hover:bg-white/5"
+            }`}
           >
             Custom Trips
           </Link>
 
           <Link
             href="/blogs"
-            className="px-3 py-2 text-sm font-medium text-slate-100 hover:text-[#FFA429] transition-colors whitespace-nowrap"
+            className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+              pathname.startsWith("/blogs") ? "text-[#FFA429] bg-white/10" : "text-slate-100 hover:text-[#FFA429] hover:bg-white/5"
+            }`}
           >
             Guides & Blogs
           </Link>
 
           <Link
             href="/contact"
-            className="px-3 py-2 text-sm font-medium text-slate-100 hover:text-[#FFA429] transition-colors whitespace-nowrap"
+            className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+              pathname === "/contact" ? "text-[#FFA429] bg-white/10" : "text-slate-100 hover:text-[#FFA429] hover:bg-white/5"
+            }`}
           >
             Contact
           </Link>
         </nav>
 
         {/* Right Actions: Phone, Wishlist, Role/User, CTA */}
-        <div className="hidden lg:flex items-center space-x-2.5 shrink-0">
+        <div className="hidden lg:flex items-center gap-2.5 xl:gap-3.5 shrink-0">
           {/* Quick Helpline */}
           <a
             href="https://wa.me/919755216100?text=Hello%20HumTripWale!%20I%20want%20to%20inquire%20about%20a%20trip."

@@ -734,12 +734,13 @@ export default function AdminPage() {
                       </div>
                       <div className="text-[10px] text-slate-500 font-mono">{b.paymentId}</div>
                     </div>
-                    <button
-                      onClick={() => window.print()}
-                      className="bg-white border border-slate-300 hover:border-slate-400 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold"
+                    <Link
+                      href={`/invoice/${b.id}`}
+                      target="_blank"
+                      className="bg-white border border-slate-300 hover:border-slate-400 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-colors"
                     >
                       Invoice
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))}

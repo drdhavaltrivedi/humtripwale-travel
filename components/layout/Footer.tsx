@@ -28,7 +28,7 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-[#071324] text-slate-300 pt-16 pb-8 border-t border-white/10 relative">
+    <footer className="bg-[#071324] text-slate-300 pt-16 pb-8 border-t border-white/10 relative print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
           {/* Col 1: Brand & Bio */}

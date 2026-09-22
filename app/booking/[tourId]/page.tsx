@@ -709,22 +709,22 @@ function BookingContent() {
               {/* Invoice Header */}
               <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-6 gap-4">
                 <div>
-                  <div className="h-9 w-32 relative mb-2">
+                  <div className="h-10 w-36 relative mb-2">
                     <Image
-                      src="/logo.png"
+                      src="/logo-dark.svg"
                       alt="HumTripWale"
-                      width={140}
-                      height={45}
+                      width={150}
+                      height={50}
                       className="object-contain"
                     />
                   </div>
-                  <p className="text-xs text-slate-500">HumTripWale Experiences Pvt. Ltd.</p>
-                  <p className="text-xs text-slate-500">GSTIN: 07AAACH1234F1Z8 | MSME Certified</p>
-                  <p className="text-xs text-slate-500">Delhi & Chandigarh Departure Hubs</p>
+                  <p className="text-xs font-bold text-[#0A192F]">HumTripWale Experiences Pvt. Ltd.</p>
+                  <p className="text-xs text-slate-500">GSTIN: 23AAACH9812K1ZX | SAC: 998555</p>
+                  <p className="text-xs text-slate-500">Registered HQ: Indore (MP) • Transit Hub: Delhi NCR</p>
                 </div>
 
                 <div className="text-right sm:text-right">
-                  <span className="bg-[#0A192F] text-white text-[11px] font-bold px-3 py-1 rounded-md uppercase tracking-wider">
+                  <span className="bg-[#0A192F] text-amber-400 text-[11px] font-bold px-3 py-1 rounded-md uppercase tracking-wider">
                     Official Tax Invoice
                   </span>
                   <div className="mt-2 text-xs font-bold text-slate-900">
@@ -788,7 +788,7 @@ function BookingContent() {
                 )}
 
                 <div className="flex justify-between text-slate-700 py-1">
-                  <span>Integrated GST (5% IGST on Tourism)</span>
+                  <span>Integrated GST (5% IGST on Tourism SAC 998555)</span>
                   <span className="font-semibold">₹{gstAmount.toLocaleString("en-IN")}</span>
                 </div>
 
@@ -811,20 +811,21 @@ function BookingContent() {
                 </span>
               </div>
 
-              {/* Actions: Print Invoice & Dashboard */}
+              {/* Actions: Dedicated Invoice Page & Dashboard */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200 print:hidden">
-                <button
-                  onClick={() => window.print()}
-                  className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors"
+                <Link
+                  href={`/invoice/${confirmedBooking.id}`}
+                  target="_blank"
+                  className="inline-flex items-center gap-2 bg-[#FFA429] hover:bg-[#e5921e] text-[#0A192F] px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm transform hover:scale-[1.02]"
                 >
                   <Printer className="w-4 h-4" />
-                  Print / Save as PDF
-                </button>
+                  <span>Open Official PDF Invoice</span>
+                </Link>
 
                 <div className="flex items-center gap-3">
                   <Link
                     href="/dashboard"
-                    className="bg-[#0A192F] hover:bg-[#FFA429] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-colors"
+                    className="bg-[#0A192F] hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-colors"
                   >
                     Go to My Dashboard
                   </Link>

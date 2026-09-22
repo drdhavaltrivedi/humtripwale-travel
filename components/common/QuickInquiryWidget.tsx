@@ -1,12 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
+import { usePathname } from "next/navigation";
 import { MessageSquare, Phone, X, Send, CheckCircle2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
 export default function QuickInquiryWidget() {
+  const pathname = usePathname();
   const { addLead } = useApp();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Do not render floating widgets on invoice pages
+  if (pathname?.startsWith("/invoice")) {
+    return null;
+  }
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -38,7 +45,7 @@ export default function QuickInquiryWidget() {
   return (
     <>
       {/* Floating Action Buttons */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+      <div data-widget="quick-inquiry" className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 print:hidden">
         {/* WhatsApp Direct */}
         <a
           href="https://wa.me/919755216100?text=Hello%20HumTripWale!%20I%20am%20interested%20in%20booking%20a%20trip."

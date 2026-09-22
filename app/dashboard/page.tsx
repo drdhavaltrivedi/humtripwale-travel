@@ -188,13 +188,14 @@ function DashboardContent() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => window.print()}
-                        className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl transition-colors"
+                      <Link
+                        href={`/invoice/${booking.id}`}
+                        target="_blank"
+                        className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold px-3.5 py-2 rounded-xl transition-colors border border-slate-300/60"
                       >
-                        <Printer className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Print Invoice</span>
-                      </button>
+                        <Printer className="w-3.5 h-3.5 text-[#FFA429]" />
+                        <span>View / Print Invoice</span>
+                      </Link>
 
                       <Link
                         href={`/tours/${booking.tourId}`}
