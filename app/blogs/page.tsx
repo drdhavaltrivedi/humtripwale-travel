@@ -5,14 +5,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { Clock, ArrowRight, BookOpen, Search } from "lucide-react";
 import { BLOGS_DATA, BlogPost } from "@/data/blogsData";
+import { useApp } from "@/context/AppContext";
 
 export default function BlogsPage() {
+  const { blogs } = useApp();
   const [selectedCat, setSelectedCat] = useState<string>("All");
   const [query, setQuery] = useState("");
 
+  const blogsList = blogs && blogs.length > 0 ? blogs : BLOGS_DATA;
   const categories = ["All", "Travel Guides", "Adventure", "Food", "Itinerary"];
 
-  const filtered = BLOGS_DATA.filter((b) => {
+  const filtered = blogsList.filter((b) => {
     const matchCat = selectedCat === "All" || b.category === selectedCat;
     const matchQ = b.title.toLowerCase().includes(query.toLowerCase()) || b.excerpt.toLowerCase().includes(query.toLowerCase());
     return matchCat && matchQ;

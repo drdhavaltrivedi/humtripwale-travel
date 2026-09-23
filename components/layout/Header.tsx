@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   Plane,
   Briefcase,
-  LayoutDashboard
+  LayoutDashboard,
+  Users
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
@@ -278,6 +279,36 @@ export default function Header() {
                     <Heart className="w-3.5 h-3.5 text-[#FFA429]" />
                     <span>Saved Wishlist</span>
                   </Link>
+
+                  <div className="border-t border-white/10 my-1 pt-1.5">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2.5 py-1">
+                      Staff & Portals
+                    </div>
+                    <Link
+                      href="/admin?role=sales&tab=crm"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-amber-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <Users className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Sales CRM Desk</span>
+                    </Link>
+                    <Link
+                      href="/admin?tab=cms"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-purple-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <Compass className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Content CMS (Tours/Blogs)</span>
+                    </Link>
+                    <Link
+                      href="/admin"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Admin Executive Panel</span>
+                    </Link>
+                  </div>
                 </div>
               </div>
             )}

@@ -11,9 +11,10 @@ import { useApp } from "@/context/AppContext";
 export default function BlogPostPage() {
   const params = useParams();
   const slug = params?.slug as string;
-  const { showToast } = useApp();
+  const { showToast, blogs } = useApp();
 
-  const blog = BLOGS_DATA.find((b) => b.slug === slug || b.id === slug);
+  const blogsList = blogs && blogs.length > 0 ? blogs : BLOGS_DATA;
+  const blog = blogsList.find((b) => b.slug === slug || b.id === slug);
 
   if (!blog) {
     return notFound();

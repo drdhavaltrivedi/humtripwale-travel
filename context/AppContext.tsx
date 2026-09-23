@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { TOURS_DATA, TourPackage } from "@/data/toursData";
+import { BLOGS_DATA, BlogPost } from "@/data/blogsData";
 import {
   fetchToursFromDb,
   createTourInDb,
@@ -10,8 +11,13 @@ import {
   fetchLeadsFromDb,
   createLeadInDb,
   updateLeadStatusInDb,
+  deleteLeadFromDb,
   fetchBookingsFromDb,
   createBookingInDb,
+  fetchBlogsFromDb,
+  createBlogInDb,
+  updateBlogInDb,
+  deleteBlogFromDb,
 } from "@/lib/supabaseService";
 
 export type UserRole = "guest" | "traveler" | "sales" | "admin" | "operations";
@@ -53,6 +59,7 @@ export interface Lead {
   status: "New" | "Contacted" | "Quoted" | "Won" | "Lost";
   notes?: string;
   assignedTo?: string;
+  source?: string;
   createdAt: string;
 }
 
@@ -65,12 +72,21 @@ interface AppContextType {
   bookings: Booking[];
   addBooking: (booking: Booking) => void;
   leads: Lead[];
-  addLead: (lead: Omit<Lead, "id" | "createdAt" | "status">) => void;
+  addLead: (lead: Omit<Lead, "id" | "createdAt" | "status"> & { status?: Lead["status"]; source?: string }) => void;
   updateLeadStatus: (leadId: string, status: Lead["status"], notes?: string) => void;
+  assignLead: (leadId: string, assignedTo: string) => void;
+  deleteLead: (leadId: string) => void;
+  convertLeadToBooking: (leadId: string, tourId?: string) => Booking | null;
   tours: TourPackage[];
   addTour: (tour: TourPackage) => void;
   updateTour: (tour: TourPackage) => void;
   deleteTour: (tourId: string) => void;
+  blogs: BlogPost[];
+  addBlog: (blog: BlogPost) => void;
+  updateBlog: (blog: BlogPost) => void;
+  deleteBlog: (blogId: string) => void;
+  announcement: string;
+  setAnnouncement: (text: string) => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
 }
@@ -211,26 +227,32 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     showToast("Booking Confirmed! Check your email and WhatsApp.");
   };
 
-  const addLead = (leadData: Omit<Lead, "id" | "createdAt" | "status">) => {
+  const addLead = (
+    leadData: Omit<Lead, "id" | "createdAt" | "status"> & {
+      status?: Lead["status"];
+      source?: string;
+    }
+  ) => {
     const newLead: Lead = {
       ...leadData,
-      id: `LD-${Math.floor(100 + Math.random() * 900)}`,
-      status: "New",
+      id: `LD-${Math.floor(1000 + Math.random() * 9000)}`,
+      status: leadData.status || "New",
       createdAt: new Date().toISOString().split("T")[0],
-      assignedTo: "Unassigned",
+      assignedTo: leadData.assignedTo || "Unassigned",
+      source: leadData.source || "Website Inquiry",
     };
     setLeads((prev) => [newLead, ...prev]);
     createLeadInDb(newLead).catch((err) =>
       console.warn("Supabase createLead notice:", err)
     );
-    showToast("Trip request sent! Our travel captain will call you shortly.");
+    showToast("Lead registered in CRM pipeline successfully!");
   };
 
   const updateLeadStatus = (leadId: string, status: Lead["status"], notes?: string) => {
     setLeads((prev) =>
       prev.map((ld) =>
         ld.id === leadId
-          ? { ...ld, status, ...(notes ? { notes } : {}) }
+          ? { ...ld, status, ...(notes !== undefined ? { notes } : {}) }
           : ld
       )
     );
@@ -239,30 +261,113 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     );
   };
 
-  const [tours, setTours] = useState<TourPackage[]>(TOURS_DATA);
+  const assignLead = (leadId: string, assignedTo: string) => {
+    setLeads((prev) =>
+      prev.map((ld) => (ld.id === leadId ? { ...ld, assignedTo } : ld))
+    );
+    const target = leads.find((l) => l.id === leadId);
+    if (target) {
+      updateLeadStatusInDb(leadId, target.status, target.notes).catch(() => {});
+    }
+    showToast(`Lead reassigned to ${assignedTo}`);
+  };
 
-  // Hydrate custom tour changes from localStorage, then live-sync with Supabase
+  const deleteLead = (leadId: string) => {
+    setLeads((prev) => prev.filter((l) => l.id !== leadId));
+    deleteLeadFromDb(leadId).catch((err) =>
+      console.warn("Supabase deleteLead notice:", err)
+    );
+    showToast("Lead removed from CRM pipeline.");
+  };
+
+  const convertLeadToBooking = (leadId: string, tourId?: string): Booking | null => {
+    const targetLead = leads.find((l) => l.id === leadId);
+    if (!targetLead) return null;
+
+    const matchedTour =
+      tours.find((t) => t.id === tourId || t.destination.toLowerCase() === targetLead.destination.toLowerCase()) ||
+      tours[0];
+
+    const bookingId = `BK-${Math.floor(1000 + Math.random() * 9000)}`;
+    const invoiceNumber = `INV-HTW-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+    const travelersCount = targetLead.travelers || 1;
+    const totalAmount = (matchedTour?.discountedPrice || 19999) * travelersCount;
+
+    const newBooking: Booking = {
+      id: bookingId,
+      tourId: matchedTour.id,
+      tourTitle: matchedTour.title,
+      departureDate: targetLead.travelDate || "2026-10-25",
+      travelersCount,
+      travelerNames: [targetLead.name],
+      totalAmount,
+      status: "confirmed",
+      paymentId: `PAY_CRM_CONV_${Date.now().toString().slice(-6)}`,
+      createdAt: new Date().toISOString().split("T")[0],
+      invoiceNumber,
+      contactEmail: targetLead.email || "client@humtripwale.com",
+      contactPhone: targetLead.phone,
+    };
+
+    updateLeadStatus(leadId, "Won", `Converted to confirmed reservation #${bookingId}`);
+    setBookings((prev) => [newBooking, ...prev]);
+    createBookingInDb(newBooking).catch((err) =>
+      console.warn("Supabase createBooking notice:", err)
+    );
+    showToast(`Lead converted to Confirmed Booking #${bookingId}! Invoice ready.`);
+    return newBooking;
+  };
+
+  const [tours, setTours] = useState<TourPackage[]>(TOURS_DATA);
+  const [blogs, setBlogs] = useState<BlogPost[]>(BLOGS_DATA);
+  const [announcement, setAnnouncementState] = useState<string>(
+    "🔥 Autumn & Diwali Expeditions Open! Flat ₹3,000 Off per group — Use code HIMALAYA2026"
+  );
+
+  const setAnnouncement = (text: string) => {
+    setAnnouncementState(text);
+    try {
+      localStorage.setItem("humtrip_announcement", text);
+    } catch (e) {}
+    showToast("Announcement banner updated!");
+  };
+
+  // Hydrate custom tour & blog changes from localStorage, then live-sync with Supabase
   useEffect(() => {
     // 1. Instant local cache hydration
     try {
-      const saved = localStorage.getItem("humtrip_tours_catalog");
-      if (saved) {
-        const parsed = JSON.parse(saved);
+      const savedTours = localStorage.getItem("humtrip_tours_catalog");
+      if (savedTours) {
+        const parsed = JSON.parse(savedTours);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setTours(parsed);
         }
       }
+
+      const savedBlogs = localStorage.getItem("humtrip_blogs_catalog");
+      if (savedBlogs) {
+        const parsedBlogs = JSON.parse(savedBlogs);
+        if (Array.isArray(parsedBlogs) && parsedBlogs.length > 0) {
+          setBlogs(parsedBlogs);
+        }
+      }
+
+      const savedAnnounce = localStorage.getItem("humtrip_announcement");
+      if (savedAnnounce) {
+        setAnnouncementState(savedAnnounce);
+      }
     } catch (e) {
-      console.warn("Could not load tours from localStorage", e);
+      console.warn("Could not load cache from localStorage", e);
     }
 
     // 2. Cloud sync from Supabase PostgreSQL
     async function syncCloudData() {
       try {
-        const [liveTours, liveLeads, liveBookings] = await Promise.all([
+        const [liveTours, liveLeads, liveBookings, liveBlogs] = await Promise.all([
           fetchToursFromDb(),
           fetchLeadsFromDb(),
           fetchBookingsFromDb(),
+          fetchBlogsFromDb(),
         ]);
 
         if (liveTours && liveTours.length > 0) {
@@ -278,6 +383,13 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (liveBookings && liveBookings.length > 0) {
           setBookings(liveBookings);
+        }
+
+        if (liveBlogs && liveBlogs.length > 0) {
+          setBlogs(liveBlogs);
+          try {
+            localStorage.setItem("humtrip_blogs_catalog", JSON.stringify(liveBlogs));
+          } catch (e) {}
         }
       } catch (err) {
         console.warn("Supabase live sync notice:", err);
@@ -323,6 +435,43 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     showToast("Tour listing deleted successfully.");
   };
 
+  // --- BLOGS CMS METHODS ---
+  const saveBlogs = (newBlogs: BlogPost[]) => {
+    setBlogs(newBlogs);
+    try {
+      localStorage.setItem("humtrip_blogs_catalog", JSON.stringify(newBlogs));
+    } catch (e) {
+      console.warn("Could not save blogs to localStorage", e);
+    }
+  };
+
+  const addBlog = (newBlog: BlogPost) => {
+    const updated = [newBlog, ...blogs];
+    saveBlogs(updated);
+    createBlogInDb(newBlog).catch((err) =>
+      console.warn("Supabase createBlog notice:", err)
+    );
+    showToast(`Published travel guide: "${newBlog.title}"`);
+  };
+
+  const updateBlog = (updatedBlog: BlogPost) => {
+    const updated = blogs.map((b) => (b.id === updatedBlog.id ? updatedBlog : b));
+    saveBlogs(updated);
+    updateBlogInDb(updatedBlog).catch((err) =>
+      console.warn("Supabase updateBlog notice:", err)
+    );
+    showToast(`Updated travel guide: "${updatedBlog.title}"`);
+  };
+
+  const deleteBlog = (blogId: string) => {
+    const updated = blogs.filter((b) => b.id !== blogId);
+    saveBlogs(updated);
+    deleteBlogFromDb(blogId).catch((err) =>
+      console.warn("Supabase deleteBlog notice:", err)
+    );
+    showToast("Travel guide deleted successfully.");
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -336,10 +485,19 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         leads,
         addLead,
         updateLeadStatus,
+        assignLead,
+        deleteLead,
+        convertLeadToBooking,
         tours,
         addTour,
         updateTour,
         deleteTour,
+        blogs,
+        addBlog,
+        updateBlog,
+        deleteBlog,
+        announcement,
+        setAnnouncement,
         toastMessage,
         showToast,
       }}

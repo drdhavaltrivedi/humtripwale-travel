@@ -5,8 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Clock } from "lucide-react";
 import { BLOGS_DATA } from "@/data/blogsData";
+import { useApp } from "@/context/AppContext";
 
 export default function TravelBlogsSection() {
+  const { blogs } = useApp();
+  const blogsList = blogs && blogs.length > 0 ? blogs : BLOGS_DATA;
   return (
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -33,7 +36,7 @@ export default function TravelBlogsSection() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {BLOGS_DATA.map((blog) => (
+          {blogsList.slice(0, 3).map((blog) => (
             <article
               key={blog.id}
               className="group bg-[#FAF7F2] rounded-2xl overflow-hidden border border-slate-200 flex flex-col justify-between hover:shadow-md transition-shadow"

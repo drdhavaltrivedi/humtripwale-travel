@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient";
 import { TourPackage, ItineraryDay } from "@/data/toursData";
 import { Lead, Booking } from "@/context/AppContext";
+import { BlogPost } from "@/data/blogsData";
 
 // --- TOURS SERVICE ---
 
@@ -323,6 +324,96 @@ export async function createBookingInDb(booking: Booking): Promise<boolean> {
     return true;
   } catch (err) {
     console.error("createBookingInDb exception:", err);
+    return false;
+  }
+}
+
+export async function deleteLeadFromDb(leadId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("leads").delete().eq("id", leadId);
+    if (error) {
+      console.warn("deleteLeadFromDb error:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("deleteLeadFromDb exception:", err);
+    return false;
+  }
+}
+
+// --- BLOGS SERVICE (CMS) ---
+
+export async function fetchBlogsFromDb(): Promise<BlogPost[]> {
+  try {
+    const { data, error } = await supabase
+      .from("blogs")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error || !data || data.length === 0) {
+      return [];
+    }
+
+    return data.map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      title: row.title,
+      category: row.category || "Travel Guides",
+      excerpt: row.excerpt || "",
+      readTime: row.read_time || "5 min read",
+      date: row.published_date || new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
+      author: row.author || "HumTripWale Team",
+      heroImage: row.cover_image || "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?q=80&w=1200&auto=format&fit=crop",
+      content: typeof row.content === "string" ? row.content.split("\n\n").filter(Boolean) : (Array.isArray(row.content) ? row.content : []),
+    }));
+  } catch (err) {
+    console.warn("fetchBlogsFromDb notice:", err);
+    return [];
+  }
+}
+
+export async function createBlogInDb(blog: BlogPost): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("blogs").upsert({
+      id: blog.id,
+      slug: blog.slug,
+      title: blog.title,
+      excerpt: blog.excerpt,
+      content: Array.isArray(blog.content) ? blog.content.join("\n\n") : blog.content,
+      cover_image: blog.heroImage,
+      author: blog.author,
+      published_date: blog.date,
+      read_time: blog.readTime,
+      category: blog.category,
+      tags: [blog.category],
+    });
+
+    if (error) {
+      console.warn("createBlogInDb error:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("createBlogInDb exception:", err);
+    return false;
+  }
+}
+
+export async function updateBlogInDb(blog: BlogPost): Promise<boolean> {
+  return createBlogInDb(blog);
+}
+
+export async function deleteBlogFromDb(blogId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("blogs").delete().eq("id", blogId);
+    if (error) {
+      console.warn("deleteBlogFromDb error:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("deleteBlogFromDb exception:", err);
     return false;
   }
 }

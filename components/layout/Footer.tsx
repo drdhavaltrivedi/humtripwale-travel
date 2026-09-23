@@ -181,8 +181,18 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/admin?role=sales&tab=crm" className="hover:text-[#FFA429] transition-colors">
+                  Sales CRM Desk (Leads & Quotes)
+                </Link>
+              </li>
+              <li>
+                <Link href="/admin?tab=cms" className="hover:text-[#FFA429] transition-colors">
+                  Content CMS (Tours & Guides)
+                </Link>
+              </li>
+              <li>
                 <Link href="/admin" className="hover:text-amber-300 transition-colors">
-                  Admin & Operations Panel
+                  Executive Admin Portal
                 </Link>
               </li>
             </ul>
