@@ -21,6 +21,7 @@ import {
   Plus
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import { TOURS_DATA } from "@/data/toursData";
 import TourCard from "@/components/tours/TourCard";
 
@@ -29,6 +30,7 @@ function DashboardContent() {
   const initialTab = searchParams.get("tab") || "bookings";
 
   const { user, bookings, wishlist, showToast } = useApp();
+  const { signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<string>(initialTab);
 
   // Saved Travelers state
@@ -69,7 +71,7 @@ function DashboardContent() {
     <div className="min-h-screen bg-[#FAF7F2] pt-28 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Internal Team Quick Bridge (Visible only for Staff Roles) */}
-        {user && user.role !== "traveler" && user.role !== "guest" && (
+        {user && user.role !== "traveler" && (
           <div className="bg-[#0A192F] text-white px-5 py-3.5 rounded-2xl mb-6 flex flex-wrap items-center justify-between gap-3 border border-amber-500/30 shadow-md">
             <div className="flex items-center gap-2.5 text-xs">
               <span className="bg-[#FFA429] text-[#0A192F] font-extrabold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
@@ -130,6 +132,12 @@ function DashboardContent() {
               <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
               <span>Trip Captain Desk</span>
             </a>
+            <button
+              onClick={() => signOut()}
+              className="bg-red-500/15 hover:bg-red-500/25 text-red-200 text-xs font-bold px-4 py-2.5 rounded-xl border border-red-400/20 transition-all"
+            >
+              Logout
+            </button>
           </div>
         </div>
 

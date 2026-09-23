@@ -47,14 +47,15 @@ import {
   RefreshCw
 } from "lucide-react";
 import { useApp, Lead, Booking } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 import { TOURS_DATA, TourPackage } from "@/data/toursData";
 import { BLOGS_DATA, BlogPost } from "@/data/blogsData";
 
 function AdminContent() {
-  const { 
-    user, 
-    setUserRole, 
-    leads, 
+  const {
+    user,
+    leads,
     addLead,
     updateLeadStatus, 
     assignLead,
@@ -74,9 +75,14 @@ function AdminContent() {
     setAnnouncement
   } = useApp();
 
+  const { profile, loading: authLoading, signOut } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const queryRole = searchParams.get("role");
   const queryTab = searchParams.get("tab");
+
+  const realRole = profile?.role; // "admin" | "sales" | "operations" | "traveler" — the source of truth
+  const isSuperAdmin = realRole === "admin";
 
   const [roleMode, setRoleMode] = useState<"admin" | "sales" | "operations">("admin");
   const [activeTab, setActiveTab] = useState<"kpi" | "crm" | "bookings" | "cms" | "tours" | "system">("kpi");
@@ -84,12 +90,28 @@ function AdminContent() {
   // CMS Subtab State
   const [cmsSubTab, setCmsSubTab] = useState<"tours" | "blogs" | "announcements">("tours");
 
-  // Role and Tab synchronization from URL query
+  // Server proxy already blocks non-staff from this route; this is a
+  // defense-in-depth client check that also kicks in on client-side nav.
   useEffect(() => {
-    if (queryRole === "sales" || user?.role === "sales") {
+    if (!authLoading && realRole && !["admin", "sales", "operations"].includes(realRole)) {
+      router.replace("/dashboard");
+    }
+  }, [authLoading, realRole, router]);
+
+  // Role and Tab synchronization. Only a real Super Admin may preview other
+  // desks via the ?role= query param — Sales/Operations accounts are always
+  // locked to their own real role.
+  useEffect(() => {
+    if (realRole === "sales") {
       setRoleMode("sales");
       setActiveTab("crm");
-    } else if (queryRole === "operations" || user?.role === "operations") {
+    } else if (realRole === "operations") {
+      setRoleMode("operations");
+      setActiveTab("bookings");
+    } else if (isSuperAdmin && queryRole === "sales") {
+      setRoleMode("sales");
+      setActiveTab("crm");
+    } else if (isSuperAdmin && queryRole === "operations") {
       setRoleMode("operations");
       setActiveTab("bookings");
     } else {
@@ -111,11 +133,12 @@ function AdminContent() {
     } else if (queryTab === "kpi") {
       setActiveTab("kpi");
     }
-  }, [queryRole, queryTab, user?.role]);
+  }, [queryRole, queryTab, realRole, isSuperAdmin]);
 
   const handleSwitchRole = (newRole: "admin" | "sales" | "operations") => {
+    // Only Super Admin can preview other desks; Sales/Operations stay locked.
+    if (!isSuperAdmin) return;
     setRoleMode(newRole);
-    setUserRole(newRole);
     if (newRole === "sales") {
       setActiveTab("crm");
     } else if (newRole === "operations") {
@@ -677,6 +700,7 @@ function AdminContent() {
 
           {/* Role Persona Switcher & Main Site Link */}
           <div className="flex flex-wrap items-center gap-3">
+            {isSuperAdmin && (
             <div className="bg-white/10 p-1 rounded-2xl border border-white/15 flex items-center gap-1">
               <button
                 onClick={() => handleSwitchRole("admin")}
@@ -712,6 +736,7 @@ function AdminContent() {
                 <span>🧭 Operations</span>
               </button>
             </div>
+            )}
 
             <Link
               href="/"
@@ -720,6 +745,13 @@ function AdminContent() {
               <ArrowUpRight className="w-3.5 h-3.5" />
               <span>Visit Site</span>
             </Link>
+
+            <button
+              onClick={() => signOut()}
+              className="px-3.5 py-2 bg-red-500/15 hover:bg-red-500/25 text-red-200 text-xs font-semibold rounded-xl border border-red-400/20 transition-colors flex items-center gap-1.5"
+            >
+              <span>Logout</span>
+            </button>
           </div>
         </div>
 

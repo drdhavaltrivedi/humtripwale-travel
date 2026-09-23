@@ -21,10 +21,13 @@ import {
   Users
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Header() {
   const pathname = usePathname();
   const { wishlist, user } = useApp();
+  const { signOut } = useAuth();
+  const isStaff = user?.role === "admin" || user?.role === "sales" || user?.role === "operations";
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [toursDropdownOpen, setToursDropdownOpen] = useState(false);
@@ -249,11 +252,30 @@ export default function Header() {
                 <div className="border-b border-white/10 pb-2 mb-2">
                   <p className="text-[11px] text-slate-400">Signed in as</p>
                   <p className="text-sm font-semibold text-white truncate">
-                    {user ? user.name : "Guest Traveler"}
+                    {user ? user.name : "Guest"}
                   </p>
-                  <p className="text-xs text-slate-400 truncate">{user?.email || "info@humtripwale.com"}</p>
+                  <p className="text-xs text-slate-400 truncate">{user?.email || ""}</p>
                 </div>
 
+                {!user ? (
+                  <div className="space-y-1">
+                    <Link
+                      href="/login"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white bg-[#FFA429]/90 hover:bg-[#FFA429] rounded-lg transition-colors"
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      <span>Log In</span>
+                    </Link>
+                    <Link
+                      href="/signup"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <span>Create Account</span>
+                    </Link>
+                  </div>
+                ) : (
                 <div className="space-y-1">
                   <Link
                     href="/dashboard"
@@ -280,36 +302,55 @@ export default function Header() {
                     <span>Saved Wishlist</span>
                   </Link>
 
+                  {isStaff && (
                   <div className="border-t border-white/10 my-1 pt-1.5">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2.5 py-1">
                       Staff & Portals
                     </div>
-                    <Link
-                      href="/admin?role=sales&tab=crm"
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-amber-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                      <Users className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Sales CRM Desk</span>
-                    </Link>
-                    <Link
-                      href="/admin?tab=cms"
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-purple-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                      <Compass className="w-3.5 h-3.5 text-purple-400" />
-                      <span>Content CMS (Tours/Blogs)</span>
-                    </Link>
+                    {(user?.role === "admin" || user?.role === "sales") && (
+                      <Link
+                        href="/admin?tab=crm"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-amber-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      >
+                        <Users className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Sales CRM Desk</span>
+                      </Link>
+                    )}
+                    {user?.role === "admin" && (
+                      <Link
+                        href="/admin?tab=cms"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-purple-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      >
+                        <Compass className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Content CMS (Tours/Blogs)</span>
+                      </Link>
+                    )}
                     <Link
                       href="/admin"
                       onClick={() => setProfileDropdownOpen(false)}
                       className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                     >
                       <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Admin Executive Panel</span>
+                      <span>{user?.role === "operations" ? "Operations Portal" : "Admin Executive Panel"}</span>
                     </Link>
                   </div>
+                  )}
+
+                  <div className="border-t border-white/10 mt-1 pt-1.5">
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        signOut();
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-red-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <span>Log Out</span>
+                    </button>
+                  </div>
                 </div>
+                )}
               </div>
             )}
           </div>

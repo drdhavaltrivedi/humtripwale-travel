@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { TOURS_DATA, TourPackage } from "@/data/toursData";
 import { BLOGS_DATA, BlogPost } from "@/data/blogsData";
 import {
@@ -65,7 +66,6 @@ export interface Lead {
 
 interface AppContextType {
   user: UserProfile | null;
-  setUserRole: (role: UserRole) => void;
   wishlist: string[];
   toggleWishlist: (tourId: string) => void;
   isWishlisted: (tourId: string) => boolean;
@@ -94,13 +94,17 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<UserProfile | null>({
-    id: "usr-1",
-    name: "Aman Sharma",
-    email: "aman.traveler@example.com",
-    phone: "+91 97552 16100",
-    role: "traveler",
-  });
+  const { profile } = useAuth();
+
+  const user: UserProfile | null = profile
+    ? {
+        id: profile.id,
+        name: profile.fullName,
+        email: profile.email,
+        phone: "",
+        role: profile.role,
+      }
+    : null;
 
   const [wishlist, setWishlist] = useState<string[]>(["spiti-full-circuit", "ladakh-road-trip"]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -173,35 +177,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setTimeout(() => {
       setToastMessage(null);
     }, 3500);
-  };
-
-  const setUserRole = (role: UserRole) => {
-    if (role === "guest") {
-      setUser(null);
-    } else {
-      setUser({
-        id: "usr-1",
-        name:
-          role === "admin"
-            ? "Vikram Malhotra (Super Admin)"
-            : role === "sales"
-            ? "Karan Verma (Sales Lead)"
-            : role === "operations"
-            ? "Captain Aarav (Field Ops)"
-            : "Aman Sharma",
-        email:
-          role === "admin"
-            ? "admin@humtripwale.com"
-            : role === "sales"
-            ? "karan.sales@humtripwale.com"
-            : role === "operations"
-            ? "aarav.ops@humtripwale.com"
-            : "aman.traveler@example.com",
-        phone: "+91 97552 16100",
-        role,
-      });
-    }
-    showToast(`Switched active workspace role to ${role.toUpperCase()}`);
   };
 
   const toggleWishlist = (tourId: string) => {
@@ -476,7 +451,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     <AppContext.Provider
       value={{
         user,
-        setUserRole,
         wishlist,
         toggleWishlist,
         isWishlisted,

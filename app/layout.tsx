@@ -5,6 +5,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import QuickInquiryWidget from "@/components/common/QuickInquiryWidget";
 import { AppProvider } from "@/context/AppContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -44,12 +45,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${manrope.variable} ${playfair.variable} scroll-smooth`} data-scroll-behavior="smooth">
       <body className="font-sans antialiased min-h-screen flex flex-col bg-[#FAF7F2] text-slate-900 selection:bg-amber-100 selection:text-amber-900">
-        <AppProvider>
-          <Header />
-          <main className="flex-grow">{children}</main>
-          <Footer />
-          <QuickInquiryWidget />
-        </AppProvider>
+        <AuthProvider>
+          <AppProvider>
+            <Header />
+            <main className="flex-grow">{children}</main>
+            <Footer />
+            <QuickInquiryWidget />
+          </AppProvider>
+        </AuthProvider>
       </body>
     </html>
   );
