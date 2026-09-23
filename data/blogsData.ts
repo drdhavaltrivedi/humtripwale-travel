@@ -9,6 +9,9 @@ export interface BlogPost {
   author: string;
   heroImage: string;
   content: string[];
+  seoTitle?: string;
+  seoDescription?: string;
+  faqs?: { question: string; answer: string }[];
 }
 
 export const BLOGS_DATA: BlogPost[] = [

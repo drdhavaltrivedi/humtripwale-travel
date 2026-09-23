@@ -44,6 +44,8 @@ export interface TourPackage {
   isFeatured?: boolean;
   isTrending?: boolean;
   isUpcomingDeparture?: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
 }
 
 export const TOURS_DATA: TourPackage[] = [

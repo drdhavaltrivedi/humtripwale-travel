@@ -22,10 +22,13 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const explicitNext = searchParams.get("next");
+  const linkError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    linkError === "invite_link_expired" ? "That invite/magic link has expired or was already used. Ask an Admin to resend it, or sign in with a password." : null
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {

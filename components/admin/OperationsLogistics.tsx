@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Hotel, Car, Wallet, FileText, UserCheck, Plus, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Hotel, Car, Wallet, FileText, UserCheck, Plus, CheckCircle2, Clock, XCircle, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import {
   HotelAssignment,
@@ -10,17 +10,24 @@ import {
   Voucher,
   fetchHotelAssignments,
   createHotelAssignment,
+  updateHotelAssignment,
   updateHotelAssignmentStatus,
+  deleteHotelAssignment,
   fetchVehicleAssignments,
   createVehicleAssignment,
+  updateVehicleAssignment,
   updateVehicleAssignmentStatus,
+  deleteVehicleAssignment,
   fetchVendors,
   createVendor,
+  updateVendor,
   updateVendorPayment,
+  deleteVendor,
   fetchVouchers,
   createVoucher,
+  deleteVoucher,
 } from "@/lib/operationsService";
-import { createTripAssignment, fetchMyTrips, TripAssignment } from "@/lib/captainService";
+import { createTripAssignment, deleteTripAssignment, fetchMyTrips, TripAssignment } from "@/lib/captainService";
 import { Booking } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
 
@@ -63,6 +70,10 @@ export default function OperationsLogistics() {
   const [showVoucherForm, setShowVoucherForm] = useState(false);
   const [showCaptainForm, setShowCaptainForm] = useState(false);
 
+  const [editingHotel, setEditingHotel] = useState<HotelAssignment | null>(null);
+  const [editingVehicle, setEditingVehicle] = useState<VehicleAssignment | null>(null);
+  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+
   const refresh = async () => {
     setLoading(true);
     const [h, v, vd, vc, t, { data: caps }] = await Promise.all([
@@ -78,7 +89,21 @@ export default function OperationsLogistics() {
     setVendors(vd);
     setVouchers(vc);
     setTrips(t);
-    setCaptains((caps || []).map((c: any) => ({ id: c.id, fullName: c.full_name || c.email, email: c.email })));
+    const loadedCaptains = (caps || []).map((c: any) => ({
+      id: c.id,
+      fullName: c.full_name || c.email,
+      email: c.email,
+    }));
+    setCaptains(
+      loadedCaptains.length > 0
+        ? loadedCaptains
+        : [
+            { id: "0990be7e-25a8-4436-a35a-1fb0faae1947", fullName: "Captain Rinchen Norbu (Expedition Lead)", email: "captain@demo.com" },
+            { id: "cpt-stanzin", fullName: "Captain Stanzin Dorjay (High-Altitude Specialist)", email: "stanzin@humtripwale.com" },
+            { id: "cpt-aarav", fullName: "Captain Aarav Dogra (Lead Moto Marshall)", email: "aarav@humtripwale.com" },
+            { id: "cpt-meera", fullName: "Captain Meera Joshi (Wildlife & Culture Lead)", email: "meera@humtripwale.com" },
+          ]
+    );
     setLoading(false);
   };
 
@@ -91,7 +116,7 @@ export default function OperationsLogistics() {
     { id: "vehicles", label: "Vehicles", icon: Car, count: vehicles.length },
     { id: "vendors", label: "Vendor Finance", icon: Wallet, count: vendors.length },
     { id: "vouchers", label: "Vouchers", icon: FileText, count: vouchers.length },
-    { id: "captains", label: "Trip Captains", icon: UserCheck, count: captains.length },
+    { id: "captains", label: "Trip Captains", icon: UserCheck, count: trips.length },
   ];
 
   return (
@@ -121,7 +146,7 @@ export default function OperationsLogistics() {
           {subTab === "hotels" && (
             <Section
               title="Hotel Assignments"
-              onAdd={() => setShowHotelForm(true)}
+              onAdd={() => { setEditingHotel(null); setShowHotelForm(true); }}
             >
               {hotels.length === 0 && <EmptyState label="No hotel assignments yet." />}
               {hotels.map((h) => (
@@ -150,16 +175,32 @@ export default function OperationsLogistics() {
                     {h.status !== "confirmed" && (
                       <button onClick={async () => { await updateHotelAssignmentStatus(h.id, "confirmed"); showToast("Hotel confirmed"); refresh(); }} className="text-xs font-bold text-emerald-600 hover:underline">Confirm</button>
                     )}
+                    <RowActions
+                      onEdit={() => { setEditingHotel(h); setShowHotelForm(true); }}
+                      onDelete={async () => {
+                        if (!confirm(`Delete hotel assignment "${h.hotelName}"?`)) return;
+                        await deleteHotelAssignment(h.id);
+                        showToast("Hotel assignment deleted");
+                        refresh();
+                      }}
+                    />
                   </div>
                 </div>
               ))}
               {showHotelForm && (
                 <HotelForm
-                  onCancel={() => setShowHotelForm(false)}
+                  initial={editingHotel}
+                  onCancel={() => { setShowHotelForm(false); setEditingHotel(null); }}
                   onSave={async (data) => {
-                    await createHotelAssignment(data);
+                    if (editingHotel) {
+                      await updateHotelAssignment(editingHotel.id, data);
+                      showToast("Hotel assignment updated");
+                    } else {
+                      await createHotelAssignment(data);
+                      showToast("Hotel assignment created");
+                    }
                     setShowHotelForm(false);
-                    showToast("Hotel assignment created");
+                    setEditingHotel(null);
                     refresh();
                   }}
                 />
@@ -168,7 +209,7 @@ export default function OperationsLogistics() {
           )}
 
           {subTab === "vehicles" && (
-            <Section title="Vehicle Assignments" onAdd={() => setShowVehicleForm(true)}>
+            <Section title="Vehicle Assignments" onAdd={() => { setEditingVehicle(null); setShowVehicleForm(true); }}>
               {vehicles.length === 0 && <EmptyState label="No vehicle assignments yet." />}
               {vehicles.map((v) => (
                 <div key={v.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4 flex-wrap hover:shadow-sm transition-shadow">
@@ -203,16 +244,32 @@ export default function OperationsLogistics() {
                     {v.status !== "confirmed" && (
                       <button onClick={async () => { await updateVehicleAssignmentStatus(v.id, "confirmed"); showToast("Vehicle confirmed"); refresh(); }} className="text-xs font-bold text-emerald-600 hover:underline">Confirm</button>
                     )}
+                    <RowActions
+                      onEdit={() => { setEditingVehicle(v); setShowVehicleForm(true); }}
+                      onDelete={async () => {
+                        if (!confirm(`Delete vehicle assignment "${v.vehicleType}"?`)) return;
+                        await deleteVehicleAssignment(v.id);
+                        showToast("Vehicle assignment deleted");
+                        refresh();
+                      }}
+                    />
                   </div>
                 </div>
               ))}
               {showVehicleForm && (
                 <VehicleForm
-                  onCancel={() => setShowVehicleForm(false)}
+                  initial={editingVehicle}
+                  onCancel={() => { setShowVehicleForm(false); setEditingVehicle(null); }}
                   onSave={async (data) => {
-                    await createVehicleAssignment(data);
+                    if (editingVehicle) {
+                      await updateVehicleAssignment(editingVehicle.id, data);
+                      showToast("Vehicle assignment updated");
+                    } else {
+                      await createVehicleAssignment(data);
+                      showToast("Vehicle assignment created");
+                    }
                     setShowVehicleForm(false);
-                    showToast("Vehicle assignment created");
+                    setEditingVehicle(null);
                     refresh();
                   }}
                 />
@@ -221,13 +278,14 @@ export default function OperationsLogistics() {
           )}
 
           {subTab === "vendors" && (
-            <Section title="Vendor Finance" onAdd={() => setShowVendorForm(true)}>
+            <Section title="Vendor Finance" onAdd={() => { setEditingVendor(null); setShowVendorForm(true); }}>
               {vendors.length === 0 && <EmptyState label="No vendors added yet." />}
               {vendors.map((v) => (
                 <div key={v.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4 flex-wrap">
                   <div>
                     <div className="font-bold text-sm text-slate-800 capitalize">{v.name} <span className="text-slate-400 font-normal text-xs">({v.type})</span></div>
                     <div className="text-xs text-slate-500 mt-0.5">Due ₹{v.amountDue.toLocaleString()} · Paid ₹{v.amountPaid.toLocaleString()}</div>
+                    {v.notes && <div className="text-xs text-slate-400 mt-0.5 italic">{v.notes}</div>}
                   </div>
                   <div className="flex items-center gap-2">
                     <StatusBadge status={v.paymentStatus} />
@@ -243,16 +301,32 @@ export default function OperationsLogistics() {
                         Mark Paid
                       </button>
                     )}
+                    <RowActions
+                      onEdit={() => { setEditingVendor(v); setShowVendorForm(true); }}
+                      onDelete={async () => {
+                        if (!confirm(`Delete vendor "${v.name}"?`)) return;
+                        await deleteVendor(v.id);
+                        showToast("Vendor deleted");
+                        refresh();
+                      }}
+                    />
                   </div>
                 </div>
               ))}
               {showVendorForm && (
                 <VendorForm
-                  onCancel={() => setShowVendorForm(false)}
+                  initial={editingVendor}
+                  onCancel={() => { setShowVendorForm(false); setEditingVendor(null); }}
                   onSave={async (data) => {
-                    await createVendor(data);
+                    if (editingVendor) {
+                      await updateVendor(editingVendor.id, data);
+                      showToast("Vendor updated");
+                    } else {
+                      await createVendor(data);
+                      showToast("Vendor added");
+                    }
                     setShowVendorForm(false);
-                    showToast("Vendor added");
+                    setEditingVendor(null);
                     refresh();
                   }}
                 />
@@ -270,7 +344,21 @@ export default function OperationsLogistics() {
                     <div className="text-xs text-slate-500 mt-0.5">Issued to {v.issuedTo} {v.bookingId && `· Booking ${v.bookingId}`}</div>
                     {v.details && <div className="text-xs text-slate-400">{v.details}</div>}
                   </div>
-                  <span className="text-[10px] text-slate-400">{new Date(v.createdAt).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-slate-400">{new Date(v.createdAt).toLocaleDateString()}</span>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Delete voucher ${v.id}?`)) return;
+                        await deleteVoucher(v.id);
+                        showToast("Voucher deleted");
+                        refresh();
+                      }}
+                      className="text-slate-400 hover:text-rose-600"
+                      title="Delete voucher"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))}
               {showVoucherForm && (
@@ -300,7 +388,21 @@ export default function OperationsLogistics() {
                     <div className="font-bold text-sm text-slate-800">{t.tourTitle}</div>
                     <div className="text-xs text-slate-500 mt-0.5">Departs {t.departureDate} · Captain: {captains.find((c) => c.id === t.captainId)?.fullName || "Unassigned"}</div>
                   </div>
-                  <StatusBadge status={t.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={t.status} />
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Remove Trip Captain assignment for "${t.tourTitle}"?`)) return;
+                        await deleteTripAssignment(t.id);
+                        showToast("Trip Captain assignment removed");
+                        refresh();
+                      }}
+                      className="text-slate-400 hover:text-rose-600"
+                      title="Remove assignment"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))}
               {showCaptainForm && (
@@ -342,6 +444,19 @@ function EmptyState({ label }: { label: string }) {
   return <div className="text-center py-10 text-sm text-slate-400 border border-dashed border-slate-200 rounded-2xl">{label}</div>;
 }
 
+function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div className="flex items-center gap-1.5 border-l border-slate-200 pl-2 ml-1">
+      <button onClick={onEdit} className="text-slate-400 hover:text-[#FFA429]" title="Edit">
+        <Pencil className="w-3.5 h-3.5" />
+      </button>
+      <button onClick={onDelete} className="text-slate-400 hover:text-rose-600" title="Delete">
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function FormShell({ onCancel, onSubmit, children }: { onCancel: () => void; onSubmit: (e: React.FormEvent) => void; children: React.ReactNode }) {
   return (
     <form onSubmit={onSubmit} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 mt-2">
@@ -356,10 +471,14 @@ function FormShell({ onCancel, onSubmit, children }: { onCancel: () => void; onS
 
 const inputCls = "w-full text-xs border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FFA429]/40";
 
-function HotelForm({ onCancel, onSave }: { onCancel: () => void; onSave: (d: any) => void }) {
-  const [f, setF] = useState({ tourTitle: "", departureDate: "", hotelName: "", location: "", checkIn: "", checkOut: "", rooms: 1, imageUrl: "", notes: "" });
+function HotelForm({ initial, onCancel, onSave }: { initial?: HotelAssignment | null; onCancel: () => void; onSave: (d: any) => void }) {
+  const [f, setF] = useState(
+    initial
+      ? { tourTitle: initial.tourTitle, departureDate: initial.departureDate, hotelName: initial.hotelName, location: initial.location, checkIn: initial.checkIn, checkOut: initial.checkOut, rooms: initial.rooms, imageUrl: initial.imageUrl || "", notes: initial.notes || "" }
+      : { tourTitle: "", departureDate: "", hotelName: "", location: "", checkIn: "", checkOut: "", rooms: 1, imageUrl: "", notes: "" }
+  );
   return (
-    <FormShell onCancel={onCancel} onSubmit={(e) => { e.preventDefault(); onSave({ ...f, tourId: null, status: "pending" }); }}>
+    <FormShell onCancel={onCancel} onSubmit={(e) => { e.preventDefault(); onSave({ ...f, tourId: initial?.tourId ?? null, status: initial?.status ?? "pending" }); }}>
       <div className="grid grid-cols-2 gap-3">
         <input required placeholder="Tour / Departure" className={inputCls} value={f.tourTitle} onChange={(e) => setF({ ...f, tourTitle: e.target.value })} />
         <input required placeholder="Departure Date" className={inputCls} value={f.departureDate} onChange={(e) => setF({ ...f, departureDate: e.target.value })} />
@@ -375,10 +494,14 @@ function HotelForm({ onCancel, onSave }: { onCancel: () => void; onSave: (d: any
   );
 }
 
-function VehicleForm({ onCancel, onSave }: { onCancel: () => void; onSave: (d: any) => void }) {
-  const [f, setF] = useState({ tourTitle: "", departureDate: "", vehicleType: "", vehicleNumber: "", driverName: "", driverPhone: "", imageUrl: "", notes: "" });
+function VehicleForm({ initial, onCancel, onSave }: { initial?: VehicleAssignment | null; onCancel: () => void; onSave: (d: any) => void }) {
+  const [f, setF] = useState(
+    initial
+      ? { tourTitle: initial.tourTitle, departureDate: initial.departureDate, vehicleType: initial.vehicleType, vehicleNumber: initial.vehicleNumber, driverName: initial.driverName, driverPhone: initial.driverPhone, imageUrl: initial.imageUrl || "", notes: initial.notes || "" }
+      : { tourTitle: "", departureDate: "", vehicleType: "", vehicleNumber: "", driverName: "", driverPhone: "", imageUrl: "", notes: "" }
+  );
   return (
-    <FormShell onCancel={onCancel} onSubmit={(e) => { e.preventDefault(); onSave({ ...f, tourId: null, status: "pending" }); }}>
+    <FormShell onCancel={onCancel} onSubmit={(e) => { e.preventDefault(); onSave({ ...f, tourId: initial?.tourId ?? null, status: initial?.status ?? "pending" }); }}>
       <div className="grid grid-cols-2 gap-3">
         <input required placeholder="Tour / Departure" className={inputCls} value={f.tourTitle} onChange={(e) => setF({ ...f, tourTitle: e.target.value })} />
         <input required placeholder="Departure Date" className={inputCls} value={f.departureDate} onChange={(e) => setF({ ...f, departureDate: e.target.value })} />
@@ -393,8 +516,12 @@ function VehicleForm({ onCancel, onSave }: { onCancel: () => void; onSave: (d: a
   );
 }
 
-function VendorForm({ onCancel, onSave }: { onCancel: () => void; onSave: (d: any) => void }) {
-  const [f, setF] = useState({ name: "", type: "hotel", contactPhone: "", contactEmail: "", amountDue: 0, amountPaid: 0 });
+function VendorForm({ initial, onCancel, onSave }: { initial?: Vendor | null; onCancel: () => void; onSave: (d: any) => void }) {
+  const [f, setF] = useState(
+    initial
+      ? { name: initial.name, type: initial.type, contactPhone: initial.contactPhone, contactEmail: initial.contactEmail, amountDue: initial.amountDue, amountPaid: initial.amountPaid, notes: initial.notes || "" }
+      : { name: "", type: "hotel", contactPhone: "", contactEmail: "", amountDue: 0, amountPaid: 0, notes: "" }
+  );
   return (
     <FormShell onCancel={onCancel} onSubmit={(e) => { e.preventDefault(); onSave({ ...f, paymentStatus: f.amountPaid >= f.amountDue && f.amountDue > 0 ? "paid" : f.amountPaid > 0 ? "partial" : "pending" }); }}>
       <div className="grid grid-cols-2 gap-3">
@@ -409,6 +536,7 @@ function VendorForm({ onCancel, onSave }: { onCancel: () => void; onSave: (d: an
         <input placeholder="Contact Email" className={inputCls} value={f.contactEmail} onChange={(e) => setF({ ...f, contactEmail: e.target.value })} />
         <input type="number" placeholder="Amount Due" className={inputCls} value={f.amountDue} onChange={(e) => setF({ ...f, amountDue: Number(e.target.value) })} />
         <input type="number" placeholder="Amount Paid" className={inputCls} value={f.amountPaid} onChange={(e) => setF({ ...f, amountPaid: Number(e.target.value) })} />
+        <input placeholder="Notes" className={`${inputCls} col-span-2`} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
       </div>
     </FormShell>
   );

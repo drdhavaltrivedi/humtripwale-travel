@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient";
 
 export interface HotelAssignment {
   id: string;
+  departureId?: string | null;
   tourId: string | null;
   tourTitle: string;
   departureDate: string;
@@ -17,6 +18,7 @@ export interface HotelAssignment {
 
 export interface VehicleAssignment {
   id: string;
+  departureId?: string | null;
   tourId: string | null;
   tourTitle: string;
   departureDate: string;
@@ -151,6 +153,28 @@ export async function updateHotelAssignmentStatus(id: string, status: HotelAssig
   return !error;
 }
 
+export async function updateHotelAssignment(id: string, h: Omit<HotelAssignment, "id">): Promise<boolean> {
+  const { error } = await supabase
+    .from("hotel_assignments")
+    .update({
+      tour_id: h.tourId,
+      tour_title: h.tourTitle,
+      departure_date: h.departureDate,
+      hotel_name: h.hotelName,
+      location: h.location,
+      check_in: h.checkIn || null,
+      check_out: h.checkOut || null,
+      rooms: h.rooms,
+      status: h.status,
+      notes: h.notes,
+      image_url: h.imageUrl || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) console.warn("updateHotelAssignment error:", error.message);
+  return !error;
+}
+
 export async function deleteHotelAssignment(id: string): Promise<boolean> {
   const { error } = await supabase.from("hotel_assignments").delete().eq("id", id);
   if (error) console.warn("deleteHotelAssignment error:", error.message);
@@ -230,6 +254,27 @@ export async function updateVehicleAssignmentStatus(id: string, status: VehicleA
   return !error;
 }
 
+export async function updateVehicleAssignment(id: string, v: Omit<VehicleAssignment, "id">): Promise<boolean> {
+  const { error } = await supabase
+    .from("vehicle_assignments")
+    .update({
+      tour_id: v.tourId,
+      tour_title: v.tourTitle,
+      departure_date: v.departureDate,
+      vehicle_type: v.vehicleType,
+      vehicle_number: v.vehicleNumber,
+      driver_name: v.driverName,
+      driver_phone: v.driverPhone,
+      status: v.status,
+      notes: v.notes,
+      image_url: v.imageUrl || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) console.warn("updateVehicleAssignment error:", error.message);
+  return !error;
+}
+
 export async function deleteVehicleAssignment(id: string): Promise<boolean> {
   const { error } = await supabase.from("vehicle_assignments").delete().eq("id", id);
   if (error) console.warn("deleteVehicleAssignment error:", error.message);
@@ -281,6 +326,25 @@ export async function updateVendorPayment(id: string, amountPaid: number, paymen
   return !error;
 }
 
+export async function updateVendor(id: string, v: Omit<Vendor, "id">): Promise<boolean> {
+  const { error } = await supabase
+    .from("vendors")
+    .update({
+      name: v.name,
+      type: v.type,
+      contact_phone: v.contactPhone,
+      contact_email: v.contactEmail,
+      amount_due: v.amountDue,
+      amount_paid: v.amountPaid,
+      payment_status: v.paymentStatus,
+      notes: v.notes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) console.warn("updateVendor error:", error.message);
+  return !error;
+}
+
 export async function deleteVendor(id: string): Promise<boolean> {
   const { error } = await supabase.from("vendors").delete().eq("id", id);
   if (error) console.warn("deleteVendor error:", error.message);
@@ -315,5 +379,11 @@ export async function createVoucher(v: Voucher, issuedBy: string): Promise<boole
     issued_by: issuedBy,
   });
   if (error) console.warn("createVoucher error:", error.message);
+  return !error;
+}
+
+export async function deleteVoucher(id: string): Promise<boolean> {
+  const { error } = await supabase.from("vouchers").delete().eq("id", id);
+  if (error) console.warn("deleteVoucher error:", error.message);
   return !error;
 }

@@ -48,22 +48,35 @@ export default async function DestinationDetailLayout({
   const { slug } = await params;
   const destination = getDestination(slug);
 
-  const jsonLd = destination
-    ? {
-        "@context": "https://schema.org",
-        "@type": "TouristDestination",
-        name: destination.name,
-        description: destination.description,
-        image: destination.image,
-        url: absoluteUrl(`/destinations/${destination.slug}`),
-      }
-    : null;
+  if (!destination) {
+    return <>{children}</>;
+  }
+
+  const destUrl = absoluteUrl(`/destinations/${destination.slug}`);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TouristDestination",
+    name: destination.name,
+    description: destination.description,
+    image: destination.image,
+    url: destUrl,
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
+      { "@type": "ListItem", position: 2, name: "Destinations", item: absoluteUrl("/destinations") },
+      { "@type": "ListItem", position: 3, name: destination.name, item: destUrl },
+    ],
+  };
 
   return (
     <>
-      {jsonLd && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      )}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       {children}
     </>
   );

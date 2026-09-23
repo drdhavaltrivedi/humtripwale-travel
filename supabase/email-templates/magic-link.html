@@ -1,0 +1,42 @@
+<!--
+  Paste this into: Supabase Dashboard → Authentication → Email Templates → "Magic Link"
+  (the invite flow in /admin → Team & Invites uses signInWithOtp, which sends this template.)
+  Replace {{ .ConfirmationURL }} — Supabase's own template variable — stays as-is, Supabase fills it in.
+  Replace the logo src below with your hosted logo URL if it differs from the production domain.
+-->
+<div style="background-color:#FAF7F2; padding:40px 20px; font-family:'Manrope', Arial, sans-serif;">
+  <table role="presentation" width="100%" style="max-width:480px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #E5E0D8;">
+    <tr>
+      <td style="background-color:#0A192F; padding:32px; text-align:center;">
+        <img src="https://www.humtripwale.com/logo.png" alt="HumTripWale" width="160" style="display:block; margin:0 auto;" />
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:32px;">
+        <h1 style="font-family:Georgia, 'Playfair Display', serif; font-size:22px; color:#0A192F; margin:0 0 12px;">
+          You've been invited to HumTripWale
+        </h1>
+        <p style="font-size:14px; line-height:1.6; color:#475569; margin:0 0 24px;">
+          Click the button below to sign in — no password needed. This link is valid for a limited time and can only be used once.
+        </p>
+        <div style="text-align:center; margin:32px 0;">
+          <a href="{{ .ConfirmationURL }}"
+             style="background-color:#FFA429; color:#ffffff; text-decoration:none; font-weight:bold; font-size:14px; padding:14px 32px; border-radius:12px; display:inline-block;">
+            Sign In to HumTripWale
+          </a>
+        </div>
+        <p style="font-size:12px; color:#94A3B8; line-height:1.6; margin:24px 0 0;">
+          If you weren't expecting this invite, you can safely ignore this email. Didn't request it and worried? Contact
+          <a href="mailto:contact@humtripwale.com" style="color:#FFA429;">contact@humtripwale.com</a>.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background-color:#FAF7F2; padding:20px 32px; text-align:center; border-top:1px solid #E5E0D8;">
+        <p style="font-size:11px; color:#94A3B8; margin:0;">
+          © 2026 HumTripWale · +91 97552 16100 · contact@humtripwale.com
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>

@@ -73,6 +73,13 @@ export async function createTripAssignment(t: Omit<TripAssignment, "id">): Promi
   return !error;
 }
 
+// Operations/Admin only — removes a captain assignment (e.g. reassigning).
+export async function deleteTripAssignment(id: string): Promise<boolean> {
+  const { error } = await supabase.from("trip_assignments").delete().eq("id", id);
+  if (error) console.warn("deleteTripAssignment error:", error.message);
+  return !error;
+}
+
 export async function fetchAttendance(tripId: string): Promise<TripAttendanceEntry[]> {
   const { data, error } = await supabase.from("trip_attendance").select("*").eq("trip_id", tripId);
   if (error || !data) {

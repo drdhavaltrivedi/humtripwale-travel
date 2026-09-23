@@ -79,6 +79,8 @@ export async function fetchToursFromDb(): Promise<TourPackage[]> {
       isFeatured: Boolean(row.is_featured),
       isTrending: Boolean(row.is_trending),
       itinerary: daysByTourId[row.id] || [],
+      seoTitle: row.seo_title || undefined,
+      seoDescription: row.seo_description || undefined,
     }));
   } catch (err) {
     console.error("fetchToursFromDb exception:", err);
@@ -119,6 +121,8 @@ export async function createTourInDb(tour: TourPackage): Promise<boolean> {
       faqs: tour.faqs || [],
       is_featured: Boolean(tour.isFeatured),
       is_trending: Boolean(tour.isTrending),
+      seo_title: tour.seoTitle || null,
+      seo_description: tour.seoDescription || null,
       updated_at: new Date().toISOString(),
     });
 
@@ -366,6 +370,9 @@ export async function fetchBlogsFromDb(): Promise<BlogPost[]> {
       author: row.author || "HumTripWale Team",
       heroImage: row.cover_image || "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?q=80&w=1200&auto=format&fit=crop",
       content: typeof row.content === "string" ? row.content.split("\n\n").filter(Boolean) : (Array.isArray(row.content) ? row.content : []),
+      seoTitle: row.seo_title || undefined,
+      seoDescription: row.seo_description || undefined,
+      faqs: Array.isArray(row.faqs) ? row.faqs : [],
     }));
   } catch (err) {
     console.warn("fetchBlogsFromDb notice:", err);
@@ -387,6 +394,9 @@ export async function createBlogInDb(blog: BlogPost): Promise<boolean> {
       read_time: blog.readTime,
       category: blog.category,
       tags: [blog.category],
+      seo_title: blog.seoTitle || null,
+      seo_description: blog.seoDescription || null,
+      faqs: blog.faqs || [],
     });
 
     if (error) {

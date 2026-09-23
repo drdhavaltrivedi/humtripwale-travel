@@ -49,6 +49,7 @@ import {
 import { useApp, Lead, Booking } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import OperationsLogistics from "@/components/admin/OperationsLogistics";
+import TeamInvites from "@/components/admin/TeamInvites";
 import { useRouter } from "next/navigation";
 import { TOURS_DATA, TourPackage } from "@/data/toursData";
 import { BLOGS_DATA, BlogPost } from "@/data/blogsData";
@@ -86,7 +87,7 @@ function AdminContent() {
   const isSuperAdmin = realRole === "admin";
 
   const [roleMode, setRoleMode] = useState<"admin" | "sales" | "operations">("admin");
-  const [activeTab, setActiveTab] = useState<"kpi" | "crm" | "bookings" | "cms" | "tours" | "system" | "logistics">("kpi");
+  const [activeTab, setActiveTab] = useState<"kpi" | "crm" | "bookings" | "cms" | "tours" | "system" | "logistics" | "users">("kpi");
 
   // CMS Subtab State
   const [cmsSubTab, setCmsSubTab] = useState<"tours" | "blogs" | "announcements">("tours");
@@ -239,6 +240,12 @@ function AdminContent() {
     packingList: "Thermal base layers (2 sets)\nHeavy down fleece jacket\nWaterproof trekking shoes\nUV sunglasses & SPF 50 sunscreen",
     isFeatured: true,
     isTrending: false,
+    seoTitle: "",
+    seoDescription: "",
+    faqs: [
+      { question: "Who will lead the trip?", answer: "Every departure is led by a certified HumTripWale trip captain trained in high-altitude logistics and safety protocols." },
+      { question: "Can solo travelers join this tour?", answer: "Yes! Over 45% of our travelers join solo and get paired with same-gender roommates." },
+    ] as { question: string; answer: string }[],
     itinerary: [
       {
         day: 1,
@@ -276,6 +283,9 @@ function AdminContent() {
     author: "Karan Singh (Trip Captain)",
     heroImage: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?q=80&w=1200&auto=format&fit=crop",
     content: "Spiti, often called the 'Middle Land', is an enchanting paradise for those yearning for stark dramatic moonscapes and high-altitude solitude.\n\nWhy travel via Shimla rather than Manali first? The golden rule of high altitude is gradual ascension. Shimla to Kinnaur to Spiti gently elevates you from 2,000 meters to 3,800 meters over 3 days, virtually eliminating Acute Mountain Sickness (AMS).\n\nKey stops you cannot miss: Chitkul (India's last inhabited village), Gue Mummy (500-year-old self-mummified monk), Key Gompa, and sending a handwritten letter from Hikkim at 14,567 ft.\n\nAlways pack multiple warm layers, sturdy ankle-support boots, a high-capacity power bank, and sufficient cash as digital payments can be sporadic in remote corners.",
+    seoTitle: "",
+    seoDescription: "",
+    faqs: [] as { question: string; answer: string }[],
   };
   const [blogForm, setBlogForm] = useState(defaultBlogForm);
 
@@ -371,6 +381,9 @@ function AdminContent() {
       packingList: tour.packingList ? tour.packingList.join("\n") : "",
       isFeatured: Boolean(tour.isFeatured),
       isTrending: Boolean(tour.isTrending),
+      seoTitle: tour.seoTitle || "",
+      seoDescription: tour.seoDescription || "",
+      faqs: tour.faqs && tour.faqs.length > 0 ? tour.faqs : defaultTourForm.faqs,
       itinerary: tour.itinerary
         ? tour.itinerary.map((it) => ({
             day: it.day,
@@ -462,18 +475,11 @@ function AdminContent() {
         .split("\n")
         .map((s) => s.trim())
         .filter(Boolean),
-      faqs: [
-        {
-          question: "Who will lead the trip?",
-          answer: "Every departure is led by a certified HumTripWale trip captain trained in high-altitude logistics and safety protocols.",
-        },
-        {
-          question: "Can solo travelers join this tour?",
-          answer: "Yes! Over 45% of our travelers join solo and get paired with same-gender roommates.",
-        },
-      ],
+      faqs: tourForm.faqs.filter((f) => f.question.trim() && f.answer.trim()),
       isFeatured: tourForm.isFeatured,
       isTrending: tourForm.isTrending,
+      seoTitle: tourForm.seoTitle.trim() || undefined,
+      seoDescription: tourForm.seoDescription.trim() || undefined,
       itinerary: tourForm.itinerary.map((item, idx) => ({
         day: idx + 1,
         title: item.title.trim(),
@@ -572,6 +578,9 @@ function AdminContent() {
       author: b.author,
       heroImage: b.heroImage,
       content: b.content.join("\n\n"),
+      seoTitle: b.seoTitle || "",
+      seoDescription: b.seoDescription || "",
+      faqs: b.faqs && b.faqs.length > 0 ? b.faqs : [],
     });
     setBlogModalMode("edit");
     setIsBlogModalOpen(true);
@@ -602,6 +611,9 @@ function AdminContent() {
       author: blogForm.author.trim() || "HumTripWale Expedition Team",
       heroImage: blogForm.heroImage.trim() || "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?q=80&w=1200&auto=format&fit=crop",
       content: blogForm.content.split("\n\n").map((s) => s.trim()).filter(Boolean),
+      seoTitle: blogForm.seoTitle.trim() || undefined,
+      seoDescription: blogForm.seoDescription.trim() || undefined,
+      faqs: blogForm.faqs.filter((f) => f.question.trim() && f.answer.trim()),
     };
 
     if (blogModalMode === "create") {
@@ -815,6 +827,7 @@ function AdminContent() {
                 { id: "cms", label: `🎨 Content CMS (${toursList.length} Tours, ${blogsList.length} Guides)`, icon: Compass },
                 { id: "bookings", label: `💼 Bookings (${bookings.length})`, icon: Briefcase },
                 { id: "logistics", label: "🧭 Trip Logistics", icon: Compass },
+                { id: "users", label: "👤 Team & Invites", icon: UserCheck },
                 { id: "system", label: "⚡ Cloud & Vercel Health", icon: Server },
               ]
           ).map((tab) => {
@@ -1836,6 +1849,19 @@ function AdminContent() {
           </div>
         )}
 
+        {/* TAB: TEAM & INVITES (Super Admin only) */}
+        {activeTab === "users" && isSuperAdmin && (
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+            <div className="border-b border-slate-100 pb-4 mb-6">
+              <h3 className="font-serif font-bold text-xl text-slate-900">Team & Invites</h3>
+              <p className="text-xs text-slate-500">
+                Invite staff by email — they receive a passwordless magic link and are auto-assigned the role you pick the moment they sign in.
+              </p>
+            </div>
+            <TeamInvites />
+          </div>
+        )}
+
         {/* TAB: TRIP LOGISTICS (Operations) */}
         {activeTab === "logistics" && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm">
@@ -2385,6 +2411,90 @@ function AdminContent() {
                   </div>
                 </div>
 
+                {/* Section 5: SEO & Structured Data */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <Search className="w-4 h-4 text-[#FFA429]" />
+                      <h4 className="font-bold text-sm text-slate-900 uppercase tracking-wide">
+                        5. SEO & Structured Data
+                      </h4>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 -mt-2">
+                    Optional — leave blank to auto-generate from the title/tagline above. FAQs power a Google FAQ rich result.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-800">SEO Title (max ~60 chars)</label>
+                      <input
+                        maxLength={70}
+                        value={tourForm.seoTitle}
+                        onChange={(e) => setTourForm({ ...tourForm, seoTitle: e.target.value })}
+                        placeholder={`${tourForm.title || "Tour Title"} — ${tourForm.duration} ${tourForm.destination} Package`}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FFA429] focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-800">SEO Meta Description (max ~160 chars)</label>
+                      <input
+                        maxLength={200}
+                        value={tourForm.seoDescription}
+                        onChange={(e) => setTourForm({ ...tourForm, seoDescription: e.target.value })}
+                        placeholder={tourForm.tagline || "Auto-generated from tagline"}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FFA429] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-800">FAQ Schema ({tourForm.faqs.length} questions)</label>
+                      <button
+                        type="button"
+                        onClick={() => setTourForm({ ...tourForm, faqs: [...tourForm.faqs, { question: "", answer: "" }] })}
+                        className="text-[11px] font-bold text-[#FFA429] hover:underline flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" /> Add Question
+                      </button>
+                    </div>
+                    {tourForm.faqs.map((faq, idx) => (
+                      <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                        <input
+                          placeholder="Question"
+                          value={faq.question}
+                          onChange={(e) => {
+                            const next = [...tourForm.faqs];
+                            next[idx] = { ...next[idx], question: e.target.value };
+                            setTourForm({ ...tourForm, faqs: next });
+                          }}
+                          className="px-3 py-2 rounded-lg border border-slate-300 text-[11px] focus:outline-none"
+                        />
+                        <input
+                          placeholder="Answer"
+                          value={faq.answer}
+                          onChange={(e) => {
+                            const next = [...tourForm.faqs];
+                            next[idx] = { ...next[idx], answer: e.target.value };
+                            setTourForm({ ...tourForm, faqs: next });
+                          }}
+                          className="px-3 py-2 rounded-lg border border-slate-300 text-[11px] focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setTourForm({ ...tourForm, faqs: tourForm.faqs.filter((_, i) => i !== idx) })}
+                          className="text-rose-500 hover:text-rose-700 px-2"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                    <strong>Live on publish:</strong> TouristTrip schema (itinerary, offer, rating) + FAQPage schema (above) + BreadcrumbList are automatically emitted on the public tour page — no extra step needed.
+                  </div>
+                </div>
+
                 <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3 sticky bottom-0 bg-white py-3">
                   <button
                     type="button"
@@ -2515,6 +2625,79 @@ function AdminContent() {
                     placeholder="Write the guide content here. Hit enter twice between paragraphs..."
                     className="w-full p-3.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FFA429] focus:outline-none leading-relaxed"
                   />
+                </div>
+
+                <div className="space-y-4 pt-2 border-t border-slate-200">
+                  <div className="flex items-center gap-2 pt-3">
+                    <Search className="w-4 h-4 text-[#FFA429]" />
+                    <h4 className="font-bold text-sm text-slate-900 uppercase tracking-wide">SEO & Structured Data</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Optional — leave blank to auto-generate from the title/excerpt above.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-800">SEO Title</label>
+                      <input
+                        maxLength={70}
+                        value={blogForm.seoTitle}
+                        onChange={(e) => setBlogForm({ ...blogForm, seoTitle: e.target.value })}
+                        placeholder={blogForm.title || "Article Title"}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FFA429] focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-800">SEO Meta Description</label>
+                      <input
+                        maxLength={200}
+                        value={blogForm.seoDescription}
+                        onChange={(e) => setBlogForm({ ...blogForm, seoDescription: e.target.value })}
+                        placeholder={blogForm.excerpt || "Auto-generated from excerpt"}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FFA429] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-800">FAQ Schema ({blogForm.faqs.length} questions)</label>
+                      <button
+                        type="button"
+                        onClick={() => setBlogForm({ ...blogForm, faqs: [...blogForm.faqs, { question: "", answer: "" }] })}
+                        className="text-[11px] font-bold text-[#FFA429] hover:underline flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" /> Add Question
+                      </button>
+                    </div>
+                    {blogForm.faqs.map((faq, idx) => (
+                      <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                        <input
+                          placeholder="Question"
+                          value={faq.question}
+                          onChange={(e) => {
+                            const next = [...blogForm.faqs];
+                            next[idx] = { ...next[idx], question: e.target.value };
+                            setBlogForm({ ...blogForm, faqs: next });
+                          }}
+                          className="px-3 py-2 rounded-lg border border-slate-300 text-[11px] focus:outline-none"
+                        />
+                        <input
+                          placeholder="Answer"
+                          value={faq.answer}
+                          onChange={(e) => {
+                            const next = [...blogForm.faqs];
+                            next[idx] = { ...next[idx], answer: e.target.value };
+                            setBlogForm({ ...blogForm, faqs: next });
+                          }}
+                          className="px-3 py-2 rounded-lg border border-slate-300 text-[11px] focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setBlogForm({ ...blogForm, faqs: blogForm.faqs.filter((_, i) => i !== idx) })}
+                          className="text-rose-500 hover:text-rose-700 px-2"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3 sticky bottom-0 bg-white py-2">
