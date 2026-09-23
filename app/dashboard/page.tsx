@@ -18,10 +18,13 @@ import {
   Clock,
   Printer,
   ShieldCheck,
-  Plus
+  Plus,
+  Lock,
+  AlertCircle
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 import { TOURS_DATA } from "@/data/toursData";
 import TourCard from "@/components/tours/TourCard";
 
@@ -32,6 +35,15 @@ function DashboardContent() {
   const { user, bookings, wishlist, showToast } = useApp();
   const { signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const [bookingFilter, setBookingFilter] = useState<"upcoming" | "past" | "cancelled">("upcoming");
+
+  const today = new Date().toISOString().split("T")[0];
+  const filteredBookings = bookings.filter((b) => {
+    if (bookingFilter === "cancelled") return b.status === "cancelled";
+    if (b.status === "cancelled") return false;
+    const isUpcoming = b.departureDate >= today;
+    return bookingFilter === "upcoming" ? isUpcoming : !isUpcoming;
+  });
 
   // Saved Travelers state
   const [savedTravelers, setSavedTravelers] = useState([
@@ -82,10 +94,20 @@ function DashboardContent() {
               </span>
             </div>
             <Link
-              href={user.role === "sales" ? "/admin?role=sales" : "/admin"}
+              href={user.role === "trip_captain" ? "/captain" : "/admin"}
               className="inline-flex items-center gap-1.5 text-xs font-bold text-[#FFA429] hover:text-amber-300 transition-colors"
             >
-              <span>Switch to {user.role === "sales" ? "Sales CRM Desk" : "Admin Operations"} Workspace →</span>
+              <span>
+                Switch to{" "}
+                {user.role === "trip_captain"
+                  ? "Trip Captain Console"
+                  : user.role === "sales"
+                  ? "Sales CRM Desk"
+                  : user.role === "operations"
+                  ? "Operations Console"
+                  : "Admin"}{" "}
+                →
+              </span>
             </Link>
           </div>
         )}
@@ -109,7 +131,7 @@ function DashboardContent() {
                 {user?.email || "Connect your account"} • {user?.phone || "+91 97552 16100"}
               </p>
               <div className="flex items-center gap-3 text-[11px] text-slate-300 font-medium mt-2">
-                <span>Verified Traveler</span>
+                <span>{user?.role === "traveler" ? "Verified Traveler" : "Staff Preview Mode"}</span>
                 <span>•</span>
                 <span>{bookings.length} Completed / Active Bookings</span>
               </div>
@@ -147,6 +169,7 @@ function DashboardContent() {
             { id: "bookings", label: "My Bookings & Invoices", count: bookings.length },
             { id: "wishlist", label: "Saved Wishlist", count: wishlist.length },
             { id: "travelers", label: "Saved Travelers", count: savedTravelers.length },
+            { id: "profile", label: "Profile & Security" },
             { id: "support", label: "Helpline & FAQs" },
           ].map((tab) => (
             <button
@@ -177,11 +200,24 @@ function DashboardContent() {
         {/* TAB 1: Bookings & Invoices */}
         {activeTab === "bookings" && (
           <div className="space-y-6">
-            {bookings.length === 0 ? (
+            <div className="flex items-center gap-2">
+              {(["upcoming", "past", "cancelled"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setBookingFilter(f)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all ${
+                    bookingFilter === f ? "bg-[#0A192F] text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {f} Trips
+                </button>
+              ))}
+            </div>
+            {filteredBookings.length === 0 ? (
               <div className="bg-white rounded-3xl p-12 text-center border border-slate-200">
                 <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                 <h3 className="font-serif text-lg font-bold text-slate-800">
-                  No expeditions booked yet
+                  No {bookingFilter} trips
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                   Ready to conquer Spiti, chill in Jibhi, or cruise Bali? Explore our upcoming fixed departures.
@@ -194,7 +230,7 @@ function DashboardContent() {
                 </Link>
               </div>
             ) : (
-              bookings.map((booking) => (
+              filteredBookings.map((booking) => (
                 <div
                   key={booking.id}
                   className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-md space-y-6"
@@ -422,6 +458,9 @@ function DashboardContent() {
           </div>
         )}
 
+        {/* TAB: Profile & Security */}
+        {activeTab === "profile" && <ProfileSecurityTab />}
+
         {/* TAB 4: Support & Help Desk */}
         {activeTab === "support" && (
           <div className="bg-white rounded-3xl p-8 border border-slate-200 space-y-6">
@@ -463,6 +502,96 @@ function DashboardContent() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ProfileSecurityTab() {
+  const { user, showToast } = useApp();
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setSubmitting(true);
+    const supabase = createClient();
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setSubmitting(false);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    setPassword("");
+    setConfirm("");
+    showToast("Password updated successfully!");
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="bg-white rounded-3xl p-8 border border-slate-200 space-y-4">
+        <h3 className="font-serif font-bold text-lg text-slate-900 flex items-center gap-2">
+          <User className="w-5 h-5 text-[#FFA429]" /> Profile
+        </h3>
+        <div className="text-xs text-slate-500 space-y-1.5">
+          <div><span className="text-slate-400">Name:</span> <span className="font-semibold text-slate-800">{user?.name}</span></div>
+          <div><span className="text-slate-400">Email:</span> <span className="font-semibold text-slate-800">{user?.email}</span></div>
+          <div><span className="text-slate-400">Role:</span> <span className="font-semibold text-slate-800 capitalize">{user?.role}</span></div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-3xl p-8 border border-slate-200 space-y-4">
+        <h3 className="font-serif font-bold text-lg text-slate-900 flex items-center gap-2">
+          <Lock className="w-5 h-5 text-[#FFA429]" /> Change Password
+        </h3>
+        {error && (
+          <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-3">
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+        <form onSubmit={handleChangePassword} className="space-y-3">
+          <input
+            type="password"
+            required
+            minLength={8}
+            placeholder="New password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full text-xs border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#FFA429]/40"
+          />
+          <input
+            type="password"
+            required
+            minLength={8}
+            placeholder="Confirm new password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            className="w-full text-xs border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#FFA429]/40"
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="bg-[#0A192F] hover:bg-[#0F223D] disabled:opacity-60 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-colors"
+          >
+            {submitting ? "Updating..." : "Update Password"}
+          </button>
+        </form>
       </div>
     </div>
   );

@@ -6,12 +6,22 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, LogIn, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
+
+// Where each role lands when they sign in without an explicit ?next= redirect.
+const ROLE_HOME: Record<string, string> = {
+  admin: "/admin",
+  sales: "/admin",
+  operations: "/admin",
+  trip_captain: "/captain",
+  traveler: "/dashboard",
+};
 
 function LoginForm() {
   const { signIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/dashboard";
+  const explicitNext = searchParams.get("next");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +41,20 @@ function LoginForm() {
       return;
     }
 
-    router.push(next);
+    let destination = explicitNext || "/dashboard";
+
+    if (!explicitNext) {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+        destination = ROLE_HOME[profile?.role || "traveler"] || "/dashboard";
+      }
+    }
+
+    router.push(destination);
     router.refresh();
   };
 

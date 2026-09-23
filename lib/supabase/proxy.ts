@@ -7,7 +7,8 @@ const supabaseAnonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwdW96ZXNjeWRuZ3Flb3BqbmNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzgzOTYsImV4cCI6MjEwNTY1NDM5Nn0.wQ7Wp_CUeFdV2v3ZNcrtE_jf4eIJTyYrOBkJ2yo33uU";
 
 // Role that can access each protected route prefix.
-const STAFF_ROLES = new Set(["admin", "sales", "operations"]);
+const ADMIN_CONSOLE_ROLES = new Set(["admin", "sales", "operations"]);
+const CAPTAIN_ROLES = new Set(["admin", "trip_captain"]);
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -33,9 +34,10 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isAdminRoute = pathname.startsWith("/admin");
+  const isCaptainRoute = pathname.startsWith("/captain");
   const isDashboardRoute = pathname.startsWith("/dashboard");
 
-  if (!isAdminRoute && !isDashboardRoute) {
+  if (!isAdminRoute && !isCaptainRoute && !isDashboardRoute) {
     return response;
   }
 
@@ -53,7 +55,12 @@ export async function updateSession(request: NextRequest) {
 
   const role = profile?.role || "traveler";
 
-  if (isAdminRoute && !STAFF_ROLES.has(role)) {
+  if (isAdminRoute && !ADMIN_CONSOLE_ROLES.has(role)) {
+    // Trip Captains get their own dedicated console, not the full admin panel.
+    return NextResponse.redirect(new URL(role === "trip_captain" ? "/captain" : "/dashboard", request.url));
+  }
+
+  if (isCaptainRoute && !CAPTAIN_ROLES.has(role)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

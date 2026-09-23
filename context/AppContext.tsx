@@ -21,7 +21,7 @@ import {
   deleteBlogFromDb,
 } from "@/lib/supabaseService";
 
-export type UserRole = "guest" | "traveler" | "sales" | "admin" | "operations";
+export type UserRole = "guest" | "traveler" | "sales" | "admin" | "operations" | "trip_captain";
 
 export interface UserProfile {
   id: string;

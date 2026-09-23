@@ -1,7 +1,7 @@
 # 🌄 HumTripWale Travel Platform
 
-> **Production-grade, experiential group travel, Himalayan road trip, and custom vacation booking platform.**  
-> Crafted with **Next.js 16 (App Router & Turbopack)**, **TypeScript**, and **Tailwind CSS**. Built according to the **HumTripWale Web SRS v1** specification and aligned with official brand guidelines.
+> **Production-grade, role-based travel operations platform.**
+> Built with **Next.js 16 (App Router, Turbopack, Proxy)**, **TypeScript**, **Tailwind CSS**, and **Supabase** (Postgres + Auth + Row Level Security). Built to the **HumTripWale Web SRS v1** specification — every screen, role, and permission below is traced directly back to SRS §5 (User Roles & Permissions) and §6 (Detailed User Flow).
 
 ---
 
@@ -9,492 +9,478 @@
 
 - [1. Overview & Brand Identity](#1-overview--brand-identity)
 - [2. System Architecture](#2-system-architecture)
-- [3. Entity-Relationship & Data Models](#3-entity-relationship--data-models)
-- [4. User Journey & Architectural Flowcharts](#4-user-journey--architectural-flowcharts)
-  - [4.1 Traveler Tour Discovery & Booking Flow](#41-traveler-tour-discovery--booking-flow)
-  - [4.2 Custom Trip Planning & CRM Lead Lifecycle](#42-custom-trip-planning--crm-lead-lifecycle)
-  - [4.3 Admin Operations & Tour Catalog CMS Flow](#43-admin-operations--tour-catalog-cms-flow)
-- [5. Feature Modules Breakdown](#5-feature-modules-breakdown)
-  - [5.1 Public Discovery & Customer Facing Pages](#51-public-discovery--customer-facing-pages)
-  - [5.2 Traveler Hub & Booking Engine](#52-traveler-hub--booking-engine)
-  - [5.3 Admin & Operations Command Center](#53-admin--operations-command-center)
-- [6. Directory Structure](#6-directory-structure)
-- [7. Getting Started & Installation](#7-getting-started--installation)
-- [8. Build, Lint & Verification](#8-build-lint--verification)
-- [9. Production Deployment](#9-production-deployment)
-- [10. License & Credits](#10-license--credits)
+- [3. Authentication & Authorization](#3-authentication--authorization)
+- [4. User Roles, Screens & Permission Matrix](#4-user-roles-screens--permission-matrix)
+- [5. Entity-Relationship & Data Models](#5-entity-relationship--data-models)
+- [6. User Journey Flowcharts](#6-user-journey-flowcharts)
+- [7. Feature Modules Breakdown](#7-feature-modules-breakdown)
+- [8. Directory Structure](#8-directory-structure)
+- [9. Scalability & Reliability](#9-scalability--reliability)
+- [10. Getting Started & Installation](#10-getting-started--installation)
+- [11. Build, Lint & Verification](#11-build-lint--verification)
+- [12. Production Deployment](#12-production-deployment)
+- [13. License & Credits](#13-license--credits)
 
 ---
 
 ## 1. Overview & Brand Identity
 
-**HumTripWale** is an authentic travel company specializing in small-group road trips, high-altitude Himalayan expeditions (Spiti Valley, Ladakh, Himachal, Kashmir), international getaways (Bali, Thailand, Vietnam), and bespoke corporate/honeymoon travel.
+**HumTripWale** is a travel company specializing in small-group road trips, high-altitude Himalayan expeditions (Spiti Valley, Ladakh, Himachal, Kashmir), international getaways (Bali, Thailand), and bespoke corporate/honeymoon travel. The platform serves two audiences on one codebase: **travelers** booking trips on the public site, and **internal staff** (Sales, Operations, Trip Captains, Admin) running the business through a dedicated console.
 
-### 🎨 Brand Color Palette & Design Rules
-
-To ensure a credible, premium look and feel (and strictly avoiding generic AI templates or sparkle emojis):
+### 🎨 Brand Color Palette
 
 | Color Token | Hex Code | Purpose & Usage |
 |:---|:---|:---|
-| **Deep Ocean Blue** | `#0A192F` / `#071324` | Primary brand canvas, header background, dark cards, bold typography |
-| **Brand Amber / Gold** | `#FFA429` / `#EEC41E` | Primary high-impact CTA buttons, highlights, badges, icons |
-| **Warm Sand** | `#FAF7F2` | Neutral background surface, card containers, section contrast |
-| **Pure White** | `#FFFFFF` | Form cards, input containers, clean modal dialogs |
-| **Slate Gray** | `#64748B` / `#94A3B8` | Secondary typography, metadata labels, borders |
-
-- **No AI Tropes**: 0 gradient abuse, 0 sparkle emojis (`✨`), and 0 placeholder texts.
-- **Micro-Interactions**: Smooth hover effects, tactile cards, clean pill badges, and accessible contrast.
+| **Deep Ocean Blue** | `#0A192F` / `#071324` | Primary brand canvas, header background, dark cards |
+| **Brand Amber / Gold** | `#FFA429` / `#EEC41E` | Primary CTA buttons, highlights, badges, icons |
+| **Warm Sand** | `#FAF7F2` | Neutral background surface, card containers |
+| **Pure White** | `#FFFFFF` | Form cards, input containers, modals |
+| **Slate Gray** | `#64748B` / `#94A3B8` | Secondary typography, metadata, borders |
 
 ---
 
 ## 2. System Architecture
 
-The application is structured around a modern hybrid Next.js architecture leveraging **Server Components** for fast initial loads and SEO, coupled with **Client Components** for rich interactivity, dynamic filtering, real-time booking calculations, and Admin CMS operations.
+The app is a single Next.js 16 deployment with **two front doors**: the public marketing/booking site (customer-facing, uses `Header`/`Footer`) and an internal staff console (`/admin`, `/captain` — bare chrome, its own nav). Both share the same Supabase backend, but access is enforced at three layers: **Proxy** (edge redirect), **RLS** (database), and **UI** (what's rendered).
 
 ```mermaid
 flowchart TD
-    subgraph ClientTier["Client Tier (Browsers & Mobile Viewports)"]
-        UI_Home["Homepage (/)"]
-        UI_Tours["Tour Discovery & Catalog (/tours)"]
-        UI_TourDetail["Tour Detail & Itinerary (/tours/:slug)"]
-        UI_Custom["Custom Trip Wizard (/custom-trip)"]
-        UI_Booking["Checkout & Payment (/booking/:tourId)"]
-        UI_Dashboard["Traveler Dashboard (/dashboard)"]
-        UI_Admin["Admin & Operations CMS (/admin)"]
+    subgraph Client["Client Tier"]
+        Public["Public Site\n/ /tours /blogs /custom-trip"]
+        AuthUI["Auth Screens\n/login /signup"]
+        Traveler["Traveler Dashboard\n/dashboard"]
+        AdminConsole["Staff Console\n/admin (Admin · Sales · Operations)"]
+        CaptainConsole["Trip Captain Console\n/captain"]
     end
 
-    subgraph AppRouter["Application Layer (Next.js 16 App Router)"]
-        SSR["Server-Side Rendering (SSR) & Metadata SEO"]
-        ClientRuntime["Client Component Runtime (React 19)"]
-        AppLayout["Global Layout & Context Provider"]
+    subgraph Edge["Edge Layer — proxy.ts (Next.js Proxy, formerly Middleware)"]
+        SessionCheck["Refresh Supabase session cookie"]
+        RoleGate{"Role-based route gate"}
     end
 
-    subgraph StateTier["State & Data Persistence Layer"]
-        AppContext["AppContext (React Context Store)"]
-        SupabaseDB[("Supabase Cloud PostgreSQL DB")]
-        LocalCache[("Browser LocalStorage Cache")]
-        StaticData["Static Catalog Data Fallback"]
+    subgraph App["Application Layer (App Router, React 19)"]
+        SiteChrome["SiteChrome — swaps Header/Footer\nvs bare console chrome by route"]
+        AuthContext["AuthContext — Supabase session + role"]
+        AppContext["AppContext — tours/leads/bookings/blogs state"]
     end
 
-    subgraph ExternalIntegrations["External Services & Integrations"]
-        WhatsApp["WhatsApp Direct Chat (+91 97552 16100)"]
-        PaymentGateway["Simulated UPI / Razorpay / Netbanking Engine"]
-        UnsplashCDN["Optimized Image CDN (Unsplash)"]
-        PrintService["Browser Native Printable GST Tax Invoice"]
+    subgraph Data["Supabase (Postgres)"]
+        AuthUsers[("auth.users\nSupabase Auth")]
+        Profiles[("profiles\nrole: traveler|sales|operations|admin|trip_captain")]
+        RLS{{"Row Level Security\npolicies per role, per table"}}
+        Business[("tours · blogs · leads · bookings\nhotel/vehicle assignments · vendors\nvouchers · trip_assignments · attendance")]
     end
 
-    UI_Home --> AppLayout
-    UI_Tours --> AppLayout
-    UI_TourDetail --> AppLayout
-    UI_Custom --> AppLayout
-    UI_Booking --> AppLayout
-    UI_Dashboard --> AppLayout
-    UI_Admin --> AppLayout
+    Public --> SiteChrome
+    AuthUI --> SiteChrome
+    Traveler --> Edge
+    AdminConsole --> Edge
+    CaptainConsole --> Edge
 
-    AppLayout --> AppContext
-    AppContext <--> SupabaseDB
-    AppContext <--> LocalCache
-    AppContext --> StaticData
+    Edge --> SessionCheck --> RoleGate
+    RoleGate -->|unauthenticated| AuthUI
+    RoleGate -->|wrong role| Traveler
+    RoleGate -->|authorized| App
 
-    UI_Booking --> PaymentGateway
-    UI_Booking --> PrintService
-    UI_Home --> WhatsApp
-    UI_TourDetail --> UnsplashCDN
+    SiteChrome --> AuthContext
+    AuthContext --> AuthUsers
+    AuthContext --> Profiles
+    App --> AppContext
+    AppContext <--> RLS
+    RLS <--> Business
+    Profiles --> RLS
 ```
+
+**Why this matters:** the Proxy check is a fast, optimistic UX redirect (keeps people off screens they can't use); RLS is the actual security boundary enforced by Postgres on every query, regardless of what the UI does. A bug in a React component can never leak another role's data, because the database itself refuses the query.
 
 ---
 
-## 3. Entity-Relationship & Data Models
+## 3. Authentication & Authorization
 
-The following ER diagram describes the primary data contracts defined across the application (`TourPackage`, `ItineraryDay`, `Booking`, `Lead`, and `BlogPost`):
+Real email/password authentication via **Supabase Auth**, with roles resolved server-side — not a client-side toggle.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Login as "/login"
+    participant SupaAuth as "Supabase Auth"
+    participant Trigger as "on_auth_user_created trigger"
+    participant Profiles as "profiles table"
+    participant Proxy as "proxy.ts"
+    participant Console as "/admin or /captain or /dashboard"
+
+    User->>Login: Submits email + password
+    Login->>SupaAuth: signInWithPassword()
+    SupaAuth-->>Login: Session (JWT + refresh cookie)
+    Note over Trigger,Profiles: On first signup only —\nauto-assigns role from staff_role_map,\ndefaults to 'traveler'
+    User->>Proxy: Requests protected route
+    Proxy->>SupaAuth: getUser() from cookie
+    Proxy->>Profiles: SELECT role WHERE id = user.id
+    alt no session
+        Proxy-->>Login: 307 redirect to /login?next=...
+    else role not permitted for route
+        Proxy-->>Console: 307 redirect to the correct console for that role
+    else authorized
+        Proxy-->>Console: allow request through
+    end
+```
+
+**Defense in depth:**
+1. **Edge (Proxy)** — redirects unauthenticated or wrong-role visitors before the page even renders.
+2. **Database (RLS)** — every table (`leads`, `bookings`, `tours`, `hotel_assignments`, `trip_assignments`, …) has row-level policies keyed off the caller's role in `profiles`, via a `SECURITY DEFINER` helper `current_role_is(roles[])`. Anonymous/traveler requests to staff-only tables return empty, not an error and not real data.
+3. **UI** — staff consoles only render the actions a role's real session grants; a Sales account can't even see the Super Admin persona switcher (`/admin` locks `roleMode` to the session's real role, not a URL query param).
+
+No role can self-escalate: the `staff_role_map` allow-list (which email → which role) is itself RLS-locked to Admin only, and `profiles.role` can only be updated by an Admin — a traveler patching their own profile row cannot change their `role` field (`with check` on the `profiles_update_own` policy blocks it).
+
+---
+
+## 4. User Roles, Screens & Permission Matrix
+
+Five roles, straight from SRS §5, each with its own dedicated experience — not one screen with a persona toggle:
+
+| Role | Landing Screen | Can | Cannot |
+|---|---|---|---|
+| **Guest** (not logged in) | Public site | Browse tours, read blogs, search packages, submit enquiry | Book, wishlist, see any dashboard |
+| **Traveler** (Registered User) | `/dashboard` | Book tours, save wishlist, manage profile, change password, download invoice, track booking (Upcoming/Past/Cancelled), review tours | Access `/admin`, `/captain`, or any other traveler's data |
+| **Sales Executive** | `/admin` (locked to Sales view) | View & update leads, create bookings, manage customers, edit tour/blog CMS | Vendor finance, hotel/vehicle assignment, Trip Captain assignment |
+| **Operations Team** | `/admin` (locked to Operations view) | Assign hotels & vehicles, manage departures, vendor finance tracking, generate vouchers, assign Trip Captains, view leads/bookings | Edit tour/blog CMS content (view-only via public catalog) |
+| **Trip Captain** | `/captain` | View assigned trips, view passenger list, mark attendance, upload trip photos, send traveler notifications | Anything outside their own assigned trips; no access to `/admin` |
+| **Admin (Super Admin)** | `/admin` (full view, can preview other desks) | Full system access — Users, Tours, CMS, Payments, Reports, Leads, Logistics, Vendors, Trip Captains, deployment health | — (unrestricted) |
+
+```mermaid
+flowchart LR
+    Guest(["Guest — not signed in"]) -->|Sign Up| Traveler
+    Traveler(["Traveler\n/dashboard"])
+
+    subgraph Staff["Internal Staff (auto-assigned by email at signup via staff_role_map)"]
+        Sales(["Sales Executive\n/admin — CRM + CMS"])
+        Ops(["Operations\n/admin — Logistics + Bookings"])
+        Captain(["Trip Captain\n/captain — Assigned trips only"])
+        Admin(["Super Admin\n/admin — full access, can preview Sales/Ops views"])
+    end
+
+    Admin -.preview.-> Sales
+    Admin -.preview.-> Ops
+```
+
+### Screen ↔ Role mapping (what's actually rendered)
+
+| Screen | Guest | Traveler | Sales | Operations | Trip Captain | Admin |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Public site (`/`, `/tours`, `/blogs`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `/dashboard` (bookings, wishlist, profile, password) | ❌ redirect to login | ✅ | staff can preview | staff can preview | ❌ | ✅ |
+| `/admin` → KPI Dashboard | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `/admin` → CRM Leads Pipeline | ❌ | ❌ | ✅ | ✅ (as inquiries) | ❌ | ✅ |
+| `/admin` → Tour/Blog CMS | ❌ | ❌ | ✅ | ❌ (RLS blocks writes) | ❌ | ✅ |
+| `/admin` → Bookings/Manifests | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
+| `/admin` → Trip Logistics (hotels/vehicles/vendors/vouchers/captains) | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| `/captain` (assigned trips, attendance, photos, notifications) | ❌ | ❌ | ❌ | ❌ | ✅ (own trips only) | ✅ (oversight) |
+
+This table is enforced twice — once by `proxy.ts` (route-level redirect) and again by Postgres RLS (data-level), so a mis-rendered button can never expose data the policy doesn't allow.
+
+---
+
+## 5. Entity-Relationship & Data Models
 
 ```mermaid
 erDiagram
+    auth_users ||--|| profiles : "1:1, id"
+    profiles ||--o{ trip_assignments : "captain_id (Trip Captain only)"
+    profiles ||--o{ staff_role_map : "email allow-list"
+
     TourPackage ||--o{ ItineraryDay : contains
-    TourPackage ||--|| StayDetails : specifies
     TourPackage ||--o{ Booking : booked_as
     Lead ||--o| Booking : converts_to
-    
+    Booking ||--o| Voucher : "issued for"
+    TourPackage ||--o{ HotelAssignment : "per departure"
+    TourPackage ||--o{ VehicleAssignment : "per departure"
+    TourPackage ||--o{ TripAssignment : "per departure"
+    TripAssignment ||--o{ TripAttendance : "passenger roster"
+    TripAssignment ||--o{ TripPhoto : "uploaded by captain"
+    TripAssignment ||--o{ TripNotification : "sent by captain"
+
+    profiles {
+        uuid id PK "= auth.users.id"
+        text email
+        text full_name
+        enum role "traveler|sales|operations|admin|trip_captain"
+    }
+
     TourPackage {
         string id PK
         string slug UK
         string title
-        string tagline
         string destination
-        string category
-        string duration
-        number durationDays
-        string startingPoint
-        string endingPoint
-        number minAge
-        string groupSize
-        string difficulty
         number originalPrice
         number discountedPrice
-        number rating
-        number reviewCount
-        string heroImage
-        string galleryImages
-        string departureDates
-        string highlights
-        string inclusions
-        string exclusions
-        string transportDetails
-        string mealDetails
-        string packingList
         boolean isFeatured
         boolean isTrending
-    }
-
-    ItineraryDay {
-        number day
-        string title
-        string description
-        string meals
-        string stay
-        string activities
-    }
-
-    StayDetails {
-        string hotelType
-        string roomSharing
-        string amenities
     }
 
     Booking {
         string id PK
         string tourId FK
-        string tourTitle
         string departureDate
         number travelersCount
-        string travelerNames
         string contactEmail
-        string contactPhone
-        number basePrice
-        number addOnsTotal
-        number discountAmount
         number totalAmount
         string paymentStatus
-        string paymentId
         string invoiceNumber
-        string bookedAt
     }
 
     Lead {
         string id PK
         string name
         string phone
-        string email
         string destination
-        string travelDate
-        string budget
-        number travelers
-        string status
+        string status "New|Contacted|Quoted|Won|Lost"
         string assignedTo
-        string notes
-        string createdAt
     }
 
-    BlogPost {
+    HotelAssignment {
+        uuid id PK
+        string tourTitle
+        string departureDate
+        string hotelName
+        int rooms
+        string status "pending|confirmed|cancelled"
+    }
+
+    VehicleAssignment {
+        uuid id PK
+        string tourTitle
+        string vehicleType
+        string driverName
+        string status
+    }
+
+    Vendor {
+        uuid id PK
+        string name
+        string type "hotel|transport|activity|other"
+        numeric amountDue
+        numeric amountPaid
+        string paymentStatus "pending|partial|paid"
+    }
+
+    Voucher {
         string id PK
-        string slug UK
-        string title
-        string excerpt
-        string content
-        string coverImage
-        string author
-        string publishedDate
-        string readTime
-        string category
-        string tags
+        string bookingId FK
+        string voucherType
+        string issuedTo
+    }
+
+    TripAssignment {
+        uuid id PK
+        uuid captainId FK
+        string tourTitle
+        string departureDate
+        string status "scheduled|ongoing|completed"
+    }
+
+    TripAttendance {
+        uuid id PK
+        uuid tripId FK
+        string travelerName
+        boolean present
     }
 ```
 
+All operational tables (`hotel_assignments`, `vehicle_assignments`, `vendors`, `vouchers`, `trip_assignments`, `trip_attendance`, `trip_photos`, `trip_notifications`) live in [`supabase/migrations/0002_operations_and_trip_captain.sql`](supabase/migrations/0002_operations_and_trip_captain.sql); hotel and vehicle image extensions and master catalog tables live in [`supabase/migrations/0003_hotels_and_vehicles.sql`](supabase/migrations/0003_hotels_and_vehicles.sql); auth/roles/RLS foundation is in [`0001_auth_and_roles.sql`](supabase/migrations/0001_auth_and_roles.sql).
+
 ---
 
-## 4. User Journey & Architectural Flowcharts
+## 6. User Journey Flowcharts
 
-### 4.1 Traveler Tour Discovery & Booking Flow
+### 6.1 Traveler: Discovery → Booking → Dashboard
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Traveler as Traveler
-    participant Home as "Homepage / Search"
+    actor Traveler
     participant Catalog as "Tour Catalog"
     participant Detail as "Tour Detail"
+    participant Auth as "Login / Signup"
     participant Checkout as "Booking Engine"
-    participant Store as "AppContext Store"
-    participant Invoice as "GST Invoice Engine"
+    participant DB as "Supabase (RLS: own bookings only)"
+    participant Dash as "/dashboard"
 
-    Traveler->>Home: Enters destination, duration, or budget
-    Home->>Catalog: Navigates with search & filter params
-    Traveler->>Catalog: Applies multi-facet filters (Difficulty, Style, Budget)
-    Catalog->>Detail: Clicks tour card to view itinerary
-    Detail->>Detail: Reviews day-by-day plan, inclusions, gear list & reviews
-    Detail->>Checkout: Clicks "Book Departure Now"
-    Traveler->>Checkout: Fills traveler names, phone, email
-    Traveler->>Checkout: Selects add-ons (Bike upgrade, Double room) & promo code
-    Traveler->>Checkout: Selects payment method (UPI / Razorpay / Card)
-    Checkout->>Store: Saves confirmed booking with unique ID & Invoice number
-    Checkout->>Invoice: Renders printable official GST tax invoice
-    Invoice-->>Traveler: Instant booking confirmation & downloadable invoice
+    Traveler->>Catalog: Search & filter tours
+    Catalog->>Detail: Open tour, review itinerary
+    Detail->>Checkout: "Book Departure Now"
+    alt not signed in
+        Checkout->>Auth: Redirect to /login?next=/booking/...
+        Auth-->>Checkout: Session established
+    end
+    Traveler->>Checkout: Traveler details, add-ons, coupon, payment
+    Checkout->>DB: INSERT booking (contact_email = own email)
+    DB-->>Checkout: Confirmed — RLS bookings_own_insert policy allows own-email rows
+    Checkout-->>Traveler: Invoice + WhatsApp confirmation
+    Traveler->>Dash: Views Upcoming/Past/Cancelled, downloads invoice, changes password
 ```
 
----
-
-### 4.2 Custom Trip Planning & CRM Lead Lifecycle
+### 6.2 Lead → Sales → Booking (CRM lifecycle)
 
 ```mermaid
 flowchart TD
-    Start(["User visits /custom-trip"]) --> Step1["Step 1: Choose Destination & Trip Type"]
-    Step1 --> Step2["Step 2: Select Travel Dates & Group Size"]
-    Step2 --> Step3["Step 3: Choose Stay Preference & Budget Tier"]
-    Step3 --> Step4["Step 4: Contact Details & Special Requests"]
-    Step4 --> SubmitLead["Submit Custom Trip Request"]
-    
-    SubmitLead --> PushCRM["AppContext: Append to Leads Pipeline"]
-    PushCRM --> ToastNotify["Show Success Toast & WhatsApp Confirmation"]
-    
-    subgraph OperationsCRM["Admin & Operations CRM (/admin)"]
-        LeadNew["Status: NEW - Unassigned"]
-        LeadContact["Status: CONTACTED - Sales Outreach"]
-        LeadQuote["Status: QUOTED - Custom Itinerary Sent"]
-        LeadWon["Status: WON - Payment Captured"]
-        LeadLost["Status: LOST - Closed Lead"]
-        
-        LeadNew --> LeadContact
-        LeadContact --> LeadQuote
-        LeadQuote --> LeadWon
-        LeadQuote --> LeadLost
-    end
-
-    PushCRM -.-> LeadNew
+    Start(["Custom Trip form / Inquiry widget"]) --> Lead["Lead created (status: New)"]
+    Lead --> SalesView["Sales Executive sees it in /admin CRM"]
+    SalesView --> Contacted["Status: Contacted"]
+    Contacted --> Quoted["Status: Quoted — WhatsApp quote sent"]
+    Quoted -->|Customer approves| Won["Status: Won → Booking auto-created"]
+    Quoted -->|Declines| Lost["Status: Lost"]
+    Won --> OpsHandoff["Operations: assign hotel, vehicle, Trip Captain"]
+    OpsHandoff --> Voucher["Generate voucher"]
+    OpsHandoff --> CaptainAssigned["Trip Captain sees departure in /captain"]
 ```
 
----
-
-### 4.3 Admin Operations & Tour Catalog CMS Flow
+### 6.3 Operations → Trip Captain handoff
 
 ```mermaid
 flowchart LR
-    Admin(["Admin logged in at /admin"]) --> CMS["Tab 4: Tours Catalog CMS"]
-    
-    CMS --> ActionChoice{"Action"}
-    
-    ActionChoice -->|Create New| OpenCreateModal["Open Create Tour Modal"]
-    ActionChoice -->|Edit Existing| OpenEditModal["Open Edit Tour Modal (Pre-populated)"]
-    ActionChoice -->|Delete| ConfirmDelete["Confirm Deletion Dialog"]
-    
-    OpenCreateModal --> FormInput["Fill Title, Slug, Pricing, Route, Accommodations"]
-    OpenEditModal --> FormInput
-    
-    FormInput --> ItineraryBuilder["Interactive Day-by-Day Itinerary Builder"]
-    ItineraryBuilder --> AddDay["+ Add Day: Title, Description, Meals, Stay"]
-    ItineraryBuilder --> RemoveDay["Remove Day"]
-    
-    AddDay --> SaveTour["Save Tour Package"]
-    RemoveDay --> SaveTour
-    
-    SaveTour --> AppStateUpdate["Update AppContext Store"]
-    AppStateUpdate --> LocalStorageSync["Sync to localStorage humtrip_tours_catalog"]
-    
-    LocalStorageSync --> LiveCatalogUpdate["Reflects instantly across /tours, /tours/:slug, and /booking/:tourId"]
-    ConfirmDelete --> DeleteAction["Remove from store & LocalStorage"]
+    OpsConsole["Operations: /admin → Trip Logistics"] --> AssignHotel["Assign Hotel"]
+    OpsConsole --> AssignVehicle["Assign Vehicle"]
+    OpsConsole --> AssignCaptain["Assign Trip Captain to departure"]
+    AssignCaptain --> CaptainSees["Captain sees trip in /captain\n(RLS: captain_id = auth.uid())"]
+    CaptainSees --> Attendance["Mark passenger attendance"]
+    CaptainSees --> Photos["Upload trip photos"]
+    CaptainSees --> Notify["Send traveler notifications"]
+    CaptainSees --> StatusUpdate["Update trip status: scheduled → ongoing → completed"]
 ```
 
 ---
 
-## 5. Feature Modules Breakdown
+## 7. Feature Modules Breakdown
 
-### 5.1 Public Discovery & Customer Facing Pages
+### 7.1 Public Discovery & Customer-Facing Pages
+Homepage, Tour Catalog with multi-facet filters, Tour Detail with itinerary/inclusions/FAQ, Destination Hubs, Custom Trip Planner (4-step wizard → CRM lead), Travel Guides/Blogs, Contact.
 
-1. **Homepage (`/`)**:
-   - **Hero Engine**: Destination search, trip style selector, departure month picker, and quick-filter trending chips.
-   - **Guaranteed Departures Calendar**: Live batch tracker with remaining seat counts, departure hubs (Majnu Ka Tila, Leh Airport Hub), and instant booking buttons.
-   - **Bento Destination Explorer**: Curated regional cards for Spiti, Ladakh, Himachal, Bali, Kashmir, and Rajasthan.
-   - **Curated Tour Showcase**: Filterable tabs for Adventure, Road Trips, Honeymoon, and International circuits.
-   - **High-Altitude Safety Standards**: Operational highlights covering certified trip captains, medical oxygen canisters, and sanitized transport.
-   - **Verified Reviews & Community Wall**: Genuine testimonials with verified travel tags and direct Instagram photo links.
-   - **Floating Quick Connect**: Floating WhatsApp direct chat (+91 97552 16100) and instant callback modal.
+### 7.2 Traveler Hub (`/dashboard`)
+Bookings split into **Upcoming / Past / Cancelled** tabs, GST invoice download, Saved Wishlist, Saved Travelers, **Profile & Security** (change password via Supabase Auth), Helpline & FAQs.
 
-2. **Tour Catalog (`/tours`)**:
-   - Multi-facet sidebar filters: Destination, Budget Range slider (₹5,000 to ₹100,000), Duration, Travel Category, and Difficulty Grade.
-   - Real-time search by keyword and sorting by Price (Low/High), Popularity, and Duration.
+### 7.3 Sales Console (`/admin`, locked to Sales)
+CRM Leads Pipeline (status transitions, WhatsApp quote templates), Tour/Blog CMS, Client Bookings.
 
-3. **Tour Detail View (`/tours/[slug]`)**:
-   - Sticky booking drawer with date selector and price calculation.
-   - Interactive day-by-day itinerary with altitude graphs, meals, and accommodations.
-   - Inclusions / Exclusions checklists, gear checklists, and cancellation policy.
+### 7.4 Operations Console (`/admin`, locked to Operations)
+Departure Manifests, **Trip Logistics** (Hotel Assignments, Vehicle Assignments, Vendor Finance tracking, Voucher generation, Trip Captain assignment), Traveler Inquiries.
 
-4. **Destination Hubs (`/destinations/[slug]`)**:
-   - Deep-dive guides for key regions (Spiti, Ladakh, Bali, Kashmir) with weather charts, best months to visit, local customs, and matching tour circuits.
+### 7.5 Trip Captain Console (`/captain`)
+My Assigned Trips → per-trip: Passenger List & Attendance check-in, Trip Photo uploads, Send Notification to travelers, trip status (scheduled/ongoing/completed).
 
-5. **Custom Trip Planner (`/custom-trip`)**:
-   - 4-step wizard for tailored vacations, family packages, and corporate offsites, routing inquiries directly to the CRM.
-
-6. **Travel Guides & Blogs (`/blogs`, `/blogs/[slug]`)**:
-   - Editorial articles covering high-altitude acclimatization, packing essentials, and route itineraries.
-
-7. **Contact & Helpline (`/contact`)**:
-   - Office addresses (Indore, Delhi, Manali), 24/7 emergency dispatch line, and direct contact form.
+### 7.6 Super Admin Console (`/admin`, full access)
+Executive KPI Dashboard, everything Sales and Operations can see (with a persona-preview switcher), Cloud/Deployment health.
 
 ---
 
-### 5.2 Traveler Hub & Booking Engine
-
-1. **Checkout & Payment Simulation (`/booking/[tourId]`)**:
-   - Step 1: Traveler roster input with age and contact details.
-   - Step 2: Add-on selection (Solo tent occupancy, mountain bike rental, paragliding passes).
-   - Step 3: Coupon code validation (`HUMTRIP10`, `EARLYBIRD`) and simulated payment (UPI, Razorpay, Net Banking).
-   - Step 4: Auto-generated printable GST Tax Invoice with QR verification.
-
-2. **User Dashboard (`/dashboard`)**:
-   - Active reservations, downloadable payment vouchers, wishlist manager, and profile settings.
-
----
-
-### 5.3 Admin & Operations Command Center (`/admin`)
-
-- **Tab 1: Executive KPI Dashboard**: Real-time gross platform revenue, confirmed passenger numbers, active inquiries count, and tour catalog health.
-- **Tab 2: CRM Leads Pipeline**: Incoming trip requests, sales agent assignments, quotation notes, and status transitions (*New*, *Contacted*, *Quoted*, *Won*, *Lost*).
-- **Tab 3: Bookings Ledger**: Centralized reservations table with traveler names, phone numbers, payment IDs, departure dates, and invoice viewing.
-- **Tab 4: Tour Catalog CMS**:
-  - Full creation and editing suite for tour circuits.
-  - Interactive Day-by-Day Itinerary Builder.
-  - Tiered pricing, promotional flags (`isFeatured`, `isTrending`), and image URL management.
-
----
-
-## 6. Directory Structure
+## 8. Directory Structure
 
 ```plaintext
 HUMTRIPWALE TRAVEL/
+├── proxy.ts                        # Edge route guard (Next.js 16 "Proxy", formerly middleware.ts)
 ├── app/
-│   ├── admin/
-│   │   └── page.tsx               # Admin & Operations Panel (KPIs, CRM, Bookings, Tour CMS)
-│   ├── blogs/
-│   │   ├── [slug]/
-│   │   │   └── page.tsx           # Individual blog post article view
-│   │   └── page.tsx               # Travel guides & blog catalog
-│   ├── booking/
-│   │   └── [tourId]/
-│   │       └── page.tsx           # 3-step checkout engine & GST Tax Invoice
-│   ├── contact/
-│   │   └── page.tsx               # Contact page with 24/7 helpline & dispatch hubs
-│   ├── custom-trip/
-│   │   └── page.tsx               # Interactive 4-step custom trip planning wizard
-│   ├── dashboard/
-│   │   └── page.tsx               # Traveler self-service dashboard & wishlist
-│   ├── destinations/
-│   │   └── [slug]/
-│   │       └── page.tsx           # Regional destination landing page
-│   ├── tours/
-│   │   ├── [slug]/
-│   │   │   └── page.tsx           # Rich tour details & day-by-day itinerary
-│   │   └── page.tsx               # Tour catalog with multi-facet filters & sorting
-│   ├── favicon.ico
-│   ├── globals.css                # Tailwind CSS tokens & base styles
-│   ├── layout.tsx                 # Root layout with Header, Footer, & AppProvider
-│   └── page.tsx                   # Production homepage
+│   ├── admin/page.tsx               # Staff console: Admin / Sales / Operations (role-gated)
+│   ├── captain/page.tsx             # Trip Captain console (own trips only)
+│   ├── login/page.tsx               # Real Supabase Auth sign-in
+│   ├── signup/page.tsx              # Traveler self-signup (staff accounts pre-provisioned)
+│   ├── dashboard/page.tsx           # Traveler self-service hub
+│   ├── tours/, blogs/, destinations/, booking/, custom-trip/, contact/, invoice/
+│   └── layout.tsx                   # Root layout — AuthProvider → AppProvider → SiteChrome
 ├── components/
-│   ├── home/
-│   │   ├── BentoDestinations.tsx  # Bento-style destination explorer
-│   │   ├── CommunityWall.tsx      # Verified traveler social proof & community
-│   │   ├── DeparturesCalendar.tsx # Fixed departures table & seat tracker
-│   │   ├── FeaturedTrips.tsx      # Curated category cards
-│   │   ├── HeroSection.tsx        # Authentic hero search engine & trust bar
-│   │   ├── SafetyTrust.tsx        # High-altitude safety & captain protocols
-│   │   └── Testimonials.tsx       # Verified traveler review cards
-│   └── layout/
-│       ├── Footer.tsx             # Production footer with official links & credentials
-│       ├── Header.tsx             # Streamlined navigation header & clean profile menu
-│       └── WhatsAppWidget.tsx     # Floating WhatsApp & callback modal
+│   ├── admin/OperationsLogistics.tsx # Hotels/Vehicles/Vendors/Vouchers/Captain assignment UI
+│   ├── layout/SiteChrome.tsx        # Swaps marketing chrome vs bare console chrome by route
+│   ├── layout/Header.tsx, Footer.tsx
+│   └── home/, tours/, common/
 ├── context/
-│   └── AppContext.tsx             # Global application state (Tours, Bookings, Leads, Wishlist)
-├── data/
-│   ├── blogsData.ts               # Curated travel blog articles & guides
-│   ├── destinationsData.ts        # Destination profiles, best times to visit, & advisories
-│   └── toursData.ts               # Core tour packages, pricing, & itineraries
-├── public/
-│   ├── logo.svg                   # Official transparent vector logo
-│   ├── logo.png                   # Brand raster backup
-│   └── logo-icon.png              # App icon
-├── next.config.ts                 # Next.js configuration (Remote image domains)
-├── package.json                   # Dependencies & build scripts
-├── postcss.config.mjs             # PostCSS Tailwind config
-├── tailwind.config.ts             # Tailwind CSS configuration
-└── tsconfig.json                  # TypeScript compiler settings
+│   ├── AuthContext.tsx              # Supabase session + role (source of truth for identity)
+│   └── AppContext.tsx               # Tours/Leads/Bookings/Blogs state, derives `user` from AuthContext
+├── lib/
+│   ├── supabase/client.ts           # Browser Supabase client (@supabase/ssr)
+│   ├── supabase/server.ts           # Server Component Supabase client
+│   ├── supabase/proxy.ts            # Session refresh + role-gate logic used by proxy.ts
+│   ├── supabaseService.ts           # Tours/leads/bookings/blogs CRUD
+│   ├── operationsService.ts         # Hotels/vehicles/vendors/vouchers CRUD
+│   └── captainService.ts            # Trip assignments/attendance/photos/notifications CRUD
+├── supabase/migrations/
+│   ├── 0001_auth_and_roles.sql      # profiles, roles, RLS, staff_role_map, auto-assign trigger
+│   └── 0002_operations_and_trip_captain.sql # Logistics + Trip Captain schema & RLS
+└── data/                            # Static seed/fallback catalog data
 ```
 
 ---
 
-## 7. Getting Started & Installation
+## 9. Scalability & Reliability
+
+- **Stateless app tier**: Next.js Server Components + Proxy hold no session state in memory — session lives in the Supabase JWT cookie, so the app scales horizontally on Vercel/any Node host without sticky sessions.
+- **Database-enforced authorization**: RLS policies run inside Postgres, not application code — adding a new client (mobile app, partner integration) inherits the same security guarantees automatically, no re-implementing permission checks.
+- **Read-heavy public catalog, write-light staff console**: `tours`/`blogs` are public-read (`using (true)`), cacheable at the edge; writes are staff-only and low-volume, so there's no contention between the high-traffic public site and the internal console.
+- **Role additions are additive, not breaking**: the `user_role` enum and `staff_role_map` allow-list mean a new role (e.g. a future "Affiliate Partner" per SRS Phase 5) is a migration + a `proxy.ts` route rule — no rewrite of existing role logic.
+- **Security-definer helper (`current_role_is`)** centralizes the "am I staff" check so every table's policy stays a one-line reference instead of duplicated role logic that could drift out of sync.
+- **Migration-first schema**: every schema change is a numbered file under `supabase/migrations/`, applied via Supabase MCP/CLI — reproducible across dev/staging/prod, matching SRS §21 environment promotion (`Development → Staging → Production`).
+- **Known follow-ups for scale**: move file uploads (trip photos) from raw URL fields to Supabase Storage with signed URLs; add pagination to `leads`/`bookings` fetches once volume grows past a few hundred rows; introduce `pg_cron` for scheduled digest emails when notification volume increases.
+
+---
+
+## 10. Getting Started & Installation
 
 ### Prerequisites
+- **Node.js** 18.18+ (20+ recommended)
+- **npm** 9+
+- A **Supabase** project (URL + anon key in `.env.local`)
 
-- **Node.js**: Version `18.18.0` or later (Node 20+ recommended)
-- **Package Manager**: `npm` (v9+) or `yarn` / `pnpm`
-- **Git**: Configured for repository cloning
+### Installation
 
-### Installation Steps
+```bash
+git clone https://github.com/drdhavaltrivedi/humtripwale-travel.git
+cd humtripwale-travel
+npm install
+```
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/drdhavaltrivedi/humtripwale-travel.git
-   cd humtripwale-travel
-   ```
+Apply the database migrations (via Supabase SQL Editor, or the Supabase MCP tool if connected):
 
-2. **Install project dependencies**:
-   ```bash
-   npm install
-   ```
+```bash
+# In order:
+supabase/migrations/0001_auth_and_roles.sql
+supabase/migrations/0002_operations_and_trip_captain.sql
+```
 
-3. **Launch the development server with Turbopack**:
-   ```bash
-   npm run dev
-   ```
+Seed staff accounts by editing `staff_role_map` in `0001_auth_and_roles.sql` with real emails, then have each person sign up at `/signup` with that exact email — their role is auto-assigned on first login.
 
-4. **Open in browser**:
-   Navigate to [http://localhost:3000](http://localhost:3000) to view the live application.
-   - Admin Panel: [http://localhost:3000/admin](http://localhost:3000/admin)
-   - Tour Catalog: [http://localhost:3000/tours](http://localhost:3000/tours)
+```bash
+npm run dev
+```
+
+- Public site: [http://localhost:3000](http://localhost:3000)
+- Traveler login: [http://localhost:3000/login](http://localhost:3000/login)
+- Staff console: [http://localhost:3000/admin](http://localhost:3000/admin) (Admin/Sales/Operations)
+- Trip Captain console: [http://localhost:3000/captain](http://localhost:3000/captain)
 
 ---
 
-## 8. Build, Lint & Verification
-
-To create an optimized production build and verify TypeScript integrity:
+## 11. Build, Lint & Verification
 
 ```bash
-# Run production build using Turbopack
-npm run build
-
-# Start the production server locally
-npm run start
-
-# Run ESLint validation
-npm run lint
+npm run build   # Production build (Turbopack) + TypeScript check
+npm run start   # Serve the production build locally
+npm run lint    # ESLint
 ```
 
 ---
 
-## 9. Production Deployment
+## 12. Production Deployment
 
-This project is built using standard Next.js conventions and can be deployed with zero additional configuration on **Vercel**, **AWS Amplify**, or any Node.js containerized environment (Docker):
+Standard Next.js conventions — deploys with zero extra config on **Vercel**:
 
-### One-Click Deployment to Vercel
-
-1. Push your code to your GitHub repository.
-2. Import the repository in [Vercel Dashboard](https://vercel.com/new).
-3. Next.js App Router and Turbopack settings will be detected automatically.
-4. Click **Deploy**.
+1. Push to GitHub.
+2. Import the repo at [vercel.com/new](https://vercel.com/new).
+3. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` env vars.
+4. Deploy. `proxy.ts` runs at the edge automatically — no extra platform config needed.
 
 ---
 
-## 10. License & Credits
+## 13. License & Credits
 
 - **Owner**: HumTripWale Travel
 - **Website**: [https://www.humtripwale.com](https://www.humtripwale.com)
 - **Helpline**: `+91 97552 16100` | `contact@humtripwale.com`
-- **Copyright**: © 2026 HumTripWale. All rights reserved. Handcrafted in India.
+- **Copyright**: © 2026 HumTripWale. All rights reserved.

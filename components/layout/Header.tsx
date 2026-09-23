@@ -27,7 +27,7 @@ export default function Header() {
   const pathname = usePathname();
   const { wishlist, user } = useApp();
   const { signOut } = useAuth();
-  const isStaff = user?.role === "admin" || user?.role === "sales" || user?.role === "operations";
+  const isStaff = user?.role === "admin" || user?.role === "sales" || user?.role === "operations" || user?.role === "trip_captain";
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [toursDropdownOpen, setToursDropdownOpen] = useState(false);
@@ -327,14 +327,35 @@ export default function Header() {
                         <span>Content CMS (Tours/Blogs)</span>
                       </Link>
                     )}
-                    <Link
-                      href="/admin"
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                      <span>{user?.role === "operations" ? "Operations Portal" : "Admin Executive Panel"}</span>
-                    </Link>
+                    {(user?.role === "admin" || user?.role === "operations") && (
+                      <Link
+                        href="/admin?tab=logistics"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-emerald-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      >
+                        <Compass className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Trip Logistics</span>
+                      </Link>
+                    )}
+                    {user?.role === "trip_captain" ? (
+                      <Link
+                        href="/captain"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Trip Captain Console</span>
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/admin"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                        <span>{user?.role === "operations" ? "Operations Portal" : "Admin Executive Panel"}</span>
+                      </Link>
+                    )}
                   </div>
                   )}
 

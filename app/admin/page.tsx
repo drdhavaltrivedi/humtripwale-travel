@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { useApp, Lead, Booking } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
+import OperationsLogistics from "@/components/admin/OperationsLogistics";
 import { useRouter } from "next/navigation";
 import { TOURS_DATA, TourPackage } from "@/data/toursData";
 import { BLOGS_DATA, BlogPost } from "@/data/blogsData";
@@ -85,7 +86,7 @@ function AdminContent() {
   const isSuperAdmin = realRole === "admin";
 
   const [roleMode, setRoleMode] = useState<"admin" | "sales" | "operations">("admin");
-  const [activeTab, setActiveTab] = useState<"kpi" | "crm" | "bookings" | "cms" | "tours" | "system">("kpi");
+  const [activeTab, setActiveTab] = useState<"kpi" | "crm" | "bookings" | "cms" | "tours" | "system" | "logistics">("kpi");
 
   // CMS Subtab State
   const [cmsSubTab, setCmsSubTab] = useState<"tours" | "blogs" | "announcements">("tours");
@@ -94,7 +95,7 @@ function AdminContent() {
   // defense-in-depth client check that also kicks in on client-side nav.
   useEffect(() => {
     if (!authLoading && realRole && !["admin", "sales", "operations"].includes(realRole)) {
-      router.replace("/dashboard");
+      router.replace(realRole === "trip_captain" ? "/captain" : "/dashboard");
     }
   }, [authLoading, realRole, router]);
 
@@ -128,6 +129,8 @@ function AdminContent() {
       setCmsSubTab("blogs");
     } else if (queryTab === "bookings") {
       setActiveTab("bookings");
+    } else if (queryTab === "logistics") {
+      setActiveTab("logistics");
     } else if (queryTab === "system") {
       setActiveTab("system");
     } else if (queryTab === "kpi") {
@@ -803,7 +806,7 @@ function AdminContent() {
             : roleMode === "operations"
             ? [
                 { id: "bookings", label: `💼 Departure Manifests (${bookings.length})`, icon: Briefcase },
-                { id: "cms", label: `🧭 Route Logistics (${toursList.length})`, icon: Compass },
+                { id: "logistics", label: `🧭 Trip Logistics`, icon: Compass },
                 { id: "crm", label: `👥 Traveler Inquiries (${leads.length})`, icon: Users },
               ]
             : [
@@ -811,6 +814,7 @@ function AdminContent() {
                 { id: "crm", label: `👥 CRM Leads (${leads.length})`, icon: Users },
                 { id: "cms", label: `🎨 Content CMS (${toursList.length} Tours, ${blogsList.length} Guides)`, icon: Compass },
                 { id: "bookings", label: `💼 Bookings (${bookings.length})`, icon: Briefcase },
+                { id: "logistics", label: "🧭 Trip Logistics", icon: Compass },
                 { id: "system", label: "⚡ Cloud & Vercel Health", icon: Server },
               ]
           ).map((tab) => {
@@ -1829,6 +1833,17 @@ function AdminContent() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* TAB: TRIP LOGISTICS (Operations) */}
+        {activeTab === "logistics" && (
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+            <div className="border-b border-slate-100 pb-4 mb-6">
+              <h3 className="font-serif font-bold text-xl text-slate-900">Trip Logistics & Vendor Management</h3>
+              <p className="text-xs text-slate-500">Assign hotels & vehicles per departure, track vendor payments, generate vouchers, and assign Trip Captains.</p>
+            </div>
+            <OperationsLogistics />
           </div>
         )}
 

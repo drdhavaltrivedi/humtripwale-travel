@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
-export type UserRole = "traveler" | "sales" | "operations" | "admin";
+export type UserRole = "traveler" | "sales" | "operations" | "admin" | "trip_captain";
 
 export interface AuthProfile {
   id: string;
