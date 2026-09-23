@@ -59,6 +59,19 @@ export async function updateTripStatus(id: string, status: TripAssignment["statu
   return !error;
 }
 
+export async function updateTripAssignment(id: string, t: Partial<Omit<TripAssignment, "id">>): Promise<boolean> {
+  const { error } = await supabase.from("trip_assignments").update({
+    captain_id: t.captainId,
+    tour_id: t.tourId,
+    tour_title: t.tourTitle,
+    departure_date: t.departureDate,
+    status: t.status,
+    updated_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) console.warn("updateTripAssignment error:", error.message);
+  return !error;
+}
+
 // Operations/Admin only — assigns a captain to a departure.
 export async function createTripAssignment(t: Omit<TripAssignment, "id">): Promise<boolean> {
   const { error } = await supabase.from("trip_assignments").insert({

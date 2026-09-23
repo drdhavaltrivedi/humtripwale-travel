@@ -382,6 +382,20 @@ export async function createVoucher(v: Voucher, issuedBy: string): Promise<boole
   return !error;
 }
 
+export async function updateVoucher(id: string, v: Partial<Omit<Voucher, "id" | "createdAt">>): Promise<boolean> {
+  const { error } = await supabase
+    .from("vouchers")
+    .update({
+      booking_id: v.bookingId,
+      voucher_type: v.voucherType,
+      issued_to: v.issuedTo,
+      details: v.details,
+    })
+    .eq("id", id);
+  if (error) console.warn("updateVoucher error:", error.message);
+  return !error;
+}
+
 export async function deleteVoucher(id: string): Promise<boolean> {
   const { error } = await supabase.from("vouchers").delete().eq("id", id);
   if (error) console.warn("deleteVoucher error:", error.message);
