@@ -667,7 +667,7 @@ function AdminContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] pt-24 pb-20 text-slate-800">
+    <div className="min-h-screen bg-[#F1F5F9] pt-8 pb-20 text-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Admin Header Bar */}
         <div className="bg-[#0A192F] text-white rounded-3xl p-6 sm:p-8 shadow-xl mb-6 flex flex-col md:flex-row items-center justify-between gap-6 border border-white/10">

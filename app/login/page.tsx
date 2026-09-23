@@ -2,6 +2,7 @@
 
 import React, { Suspense, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, LogIn, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -35,7 +36,10 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center bg-[#FAF7F2] px-4 py-16">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAF7F2] px-4 py-16">
+      <Link href="/" className="mb-8">
+        <Image src="/logo.svg" alt="HumTripWale" width={180} height={40} priority />
+      </Link>
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-[#0A192F] font-serif">Welcome Back</h1>

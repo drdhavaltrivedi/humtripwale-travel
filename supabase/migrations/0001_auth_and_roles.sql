@@ -19,9 +19,9 @@ create table if not exists public.staff_role_map (
 );
 
 insert into public.staff_role_map (email, role) values
-  ('admin@brilworks.com', 'admin'),
-  ('sales@brilworks.com', 'sales'),
-  ('opr@brilworks.com', 'operations')
+  ('admin@demo.com', 'admin'),
+  ('sales@demo.com', 'sales'),
+  ('opr@demo.com', 'operations')
 on conflict (email) do update set role = excluded.role;
 
 -- 3. Profiles table ----------------------------------------------------------
@@ -97,7 +97,25 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+revoke execute on function public.handle_new_user() from public;
+
 -- 5. RLS on business tables ---------------------------------------------------
+-- Drop legacy "Allow all ..." permissive policies (using(true)) that predate
+-- this migration — RLS policies are OR'd together, so leaving these in place
+-- would silently defeat every staff-only policy below.
+drop policy if exists "Allow all read leads" on public.leads;
+drop policy if exists "Allow all update leads" on public.leads;
+drop policy if exists "Allow all insert leads" on public.leads;
+drop policy if exists "Allow all read bookings" on public.bookings;
+drop policy if exists "Allow all update bookings" on public.bookings;
+drop policy if exists "Allow all insert bookings" on public.bookings;
+drop policy if exists "Allow all write tours" on public.tours;
+drop policy if exists "Allow public read tours" on public.tours;
+drop policy if exists "Allow all write itinerary_days" on public.itinerary_days;
+drop policy if exists "Allow public read itinerary_days" on public.itinerary_days;
+drop policy if exists "Allow all write blogs" on public.blogs;
+drop policy if exists "Allow public read blogs" on public.blogs;
+
 alter table if exists public.tours enable row level security;
 alter table if exists public.itinerary_days enable row level security;
 alter table if exists public.blogs enable row level security;
@@ -150,3 +168,11 @@ update public.profiles p
 set role = m.role
 from public.staff_role_map m
 where p.email = m.email and p.role <> m.role;
+
+-- 7. Lock down staff_role_map itself — otherwise anyone with the anon key
+-- could insert their own email as 'admin' and self-promote on next signup.
+alter table public.staff_role_map enable row level security;
+drop policy if exists "staff_role_map_admin_only" on public.staff_role_map;
+create policy "staff_role_map_admin_only" on public.staff_role_map
+  for all using (public.current_role_is(array['admin']::user_role[]))
+  with check (public.current_role_is(array['admin']::user_role[]));

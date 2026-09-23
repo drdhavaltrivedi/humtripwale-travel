@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
-import QuickInquiryWidget from "@/components/common/QuickInquiryWidget";
+import SiteChrome from "@/components/layout/SiteChrome";
 import { AppProvider } from "@/context/AppContext";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -47,10 +45,7 @@ export default function RootLayout({
       <body className="font-sans antialiased min-h-screen flex flex-col bg-[#FAF7F2] text-slate-900 selection:bg-amber-100 selection:text-amber-900">
         <AuthProvider>
           <AppProvider>
-            <Header />
-            <main className="flex-grow">{children}</main>
-            <Footer />
-            <QuickInquiryWidget />
+            <SiteChrome>{children}</SiteChrome>
           </AppProvider>
         </AuthProvider>
       </body>
