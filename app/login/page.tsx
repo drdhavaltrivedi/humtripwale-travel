@@ -63,8 +63,15 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAF7F2] px-4 py-16">
-      <Link href="/" className="mb-8">
-        <Image src="/logo.svg" alt="HumTripWale" width={180} height={40} priority />
+      <Link href="/" className="mb-8 flex items-center justify-center group" title="Return to HumTripWale Home">
+        <Image
+          src="/logo-dark.svg"
+          alt="HumTripWale Logo"
+          width={220}
+          height={75}
+          className="h-20 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+          priority
+        />
       </Link>
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
         <div className="text-center mb-8">
