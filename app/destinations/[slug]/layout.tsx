@@ -1,21 +1,24 @@
 import type { Metadata } from "next";
 import { DESTINATIONS_DATA } from "@/data/destinationsData";
+import { fetchDestinationsFromDb } from "@/lib/destinationsService";
 import { absoluteUrl } from "@/lib/seo";
 
-function getDestination(slug: string) {
-  return DESTINATIONS_DATA.find((d) => d.slug === slug);
+async function getDestination(slug: string) {
+  const live = await fetchDestinationsFromDb().catch(() => []);
+  const pool = live.length > 0 ? live : DESTINATIONS_DATA;
+  return pool.find((d) => d.slug === slug) || DESTINATIONS_DATA.find((d) => d.slug === slug);
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const destination = getDestination(slug);
+  const destination = await getDestination(slug);
 
   if (!destination) {
     return { title: "Destination Not Found" };
   }
 
-  const title = `${destination.name} Travel Guide — Best Time, Tours & Attractions`;
-  const description = destination.tagline || destination.description;
+  const title = destination.seoTitle?.trim() || `${destination.name} Travel Guide — Best Time, Tours & Attractions`;
+  const description = destination.seoDescription?.trim() || destination.tagline || destination.description;
   const url = absoluteUrl(`/destinations/${destination.slug}`);
 
   return {
@@ -46,7 +49,7 @@ export default async function DestinationDetailLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const destination = getDestination(slug);
+  const destination = await getDestination(slug);
 
   if (!destination) {
     return <>{children}</>;

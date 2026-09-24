@@ -35,6 +35,7 @@ import {
   fetchMyTrips,
   TripAssignment,
 } from "@/lib/captainService";
+import { Departure, fetchDepartures, upsertDeparture } from "@/lib/departuresService";
 import { Booking } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
 
@@ -69,6 +70,7 @@ export default function OperationsLogistics() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [captains, setCaptains] = useState<{ id: string; fullName: string; email: string }[]>([]);
   const [trips, setTrips] = useState<TripAssignment[]>([]);
+  const [departures, setDepartures] = useState<Departure[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal open states
@@ -87,12 +89,13 @@ export default function OperationsLogistics() {
 
   const refresh = async () => {
     setLoading(true);
-    const [h, v, vd, vc, t, { data: caps }] = await Promise.all([
+    const [h, v, vd, vc, t, dep, { data: caps }] = await Promise.all([
       fetchHotelAssignments(),
       fetchVehicleAssignments(),
       fetchVendors(),
       fetchVouchers(),
       fetchMyTrips(),
+      fetchDepartures(),
       supabase.from("profiles").select("id, full_name, email").eq("role", "trip_captain"),
     ]);
     setHotels(h);
@@ -100,6 +103,7 @@ export default function OperationsLogistics() {
     setVendors(vd);
     setVouchers(vc);
     setTrips(t);
+    setDepartures(dep);
     const loadedCaptains = (caps || []).map((c: any) => ({
       id: c.id,
       fullName: c.full_name || c.email,
@@ -446,6 +450,7 @@ export default function OperationsLogistics() {
       {showHotelModal && (
         <HotelForm
           initial={editingHotel}
+          departures={departures}
           onCancel={() => {
             setShowHotelModal(false);
             setEditingHotel(null);
@@ -469,6 +474,7 @@ export default function OperationsLogistics() {
       {showVehicleModal && (
         <VehicleForm
           initial={editingVehicle}
+          departures={departures}
           onCancel={() => {
             setShowVehicleModal(false);
             setEditingVehicle(null);
@@ -542,6 +548,7 @@ export default function OperationsLogistics() {
       {showCaptainModal && (
         <CaptainAssignForm
           initial={editingTrip}
+          departures={departures}
           captains={captains}
           bookings={bookings}
           onCancel={() => {
@@ -711,22 +718,94 @@ function ModalShell({
 
 const inputCls = "w-full text-xs border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#FFA429]/40 bg-white text-slate-800 transition-all";
 
+interface DepartureFields {
+  departureId: string;
+  tourId: string | null;
+  tourTitle: string;
+  departureDate: string;
+}
+
+// Structured departure picker — resolves to a real `departures` row instead of
+// free-text tour/date matching. Picking "custom" reveals manual fields and
+// upserts a new departure record on save (see resolveDeparture below).
+function DeparturePicker({
+  departures,
+  value,
+  onChange,
+}: {
+  departures: Departure[];
+  value: DepartureFields;
+  onChange: (v: DepartureFields) => void;
+}) {
+  const isKnown = departures.some((d) => d.id === value.departureId);
+  return (
+    <>
+      <div className="col-span-2">
+        <label className="block text-[11px] font-bold text-slate-700 mb-1">Departure *</label>
+        <select
+          required
+          className={inputCls}
+          value={isKnown ? value.departureId : "__custom__"}
+          onChange={(e) => {
+            if (e.target.value === "__custom__") {
+              onChange({ departureId: "", tourId: null, tourTitle: "", departureDate: "" });
+            } else {
+              const d = departures.find((x) => x.id === e.target.value)!;
+              onChange({ departureId: d.id, tourId: d.tourId, tourTitle: d.tourTitle, departureDate: d.departureDate });
+            }
+          }}
+        >
+          <option value="__custom__">+ New / custom departure…</option>
+          {departures.map((d) => (
+            <option key={d.id} value={d.id}>{d.tourTitle} — {d.departureDate}</option>
+          ))}
+        </select>
+      </div>
+      {!isKnown && (
+        <>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Tour / Departure Title *</label>
+            <input required placeholder="e.g. Full Circuit Spiti" className={inputCls} value={value.tourTitle} onChange={(e) => onChange({ ...value, tourTitle: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Departure Date *</label>
+            <input required placeholder="YYYY-MM-DD" className={inputCls} value={value.departureDate} onChange={(e) => onChange({ ...value, departureDate: e.target.value })} />
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+// Resolves a DepartureFields value to a real departure_id, creating the
+// departure record first if the user picked "custom".
+async function resolveDeparture(f: DepartureFields): Promise<DepartureFields> {
+  if (f.departureId) return f;
+  const id = await upsertDeparture({ tourId: f.tourId, tourTitle: f.tourTitle, departureDate: f.departureDate });
+  return { ...f, departureId: id || "" };
+}
+
 // ============ POPUP FORMS ============
 
 function HotelForm({
   initial,
+  departures,
   onCancel,
   onSave,
 }: {
   initial?: HotelAssignment | null;
+  departures: Departure[];
   onCancel: () => void;
   onSave: (d: any) => void;
 }) {
+  const [dep, setDep] = useState<DepartureFields>(
+    initial
+      ? { departureId: initial.departureId || "", tourId: initial.tourId, tourTitle: initial.tourTitle, departureDate: initial.departureDate }
+      : { departureId: "", tourId: null, tourTitle: "", departureDate: "" }
+  );
   const [f, setF] = useState(
     initial
       ? {
-          tourTitle: initial.tourTitle,
-          departureDate: initial.departureDate,
           hotelName: initial.hotelName,
           location: initial.location,
           checkIn: initial.checkIn,
@@ -737,8 +816,6 @@ function HotelForm({
           notes: initial.notes || "",
         }
       : {
-          tourTitle: "",
-          departureDate: "",
           hotelName: "",
           location: "",
           checkIn: "",
@@ -755,21 +832,15 @@ function HotelForm({
       title={initial ? "Edit Hotel Assignment" : "Add Hotel Assignment"}
       subtitle={initial ? `Updating booking details for ${initial.hotelName}` : "Create a new hotel or stay assignment"}
       onCancel={onCancel}
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        onSave({ ...f, tourId: initial?.tourId ?? null });
+        const resolved = await resolveDeparture(dep);
+        onSave({ ...f, ...resolved });
       }}
       saveLabel={initial ? "Save Changes" : "Create Hotel"}
     >
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Tour / Departure Title *</label>
-          <input required placeholder="e.g. Full Circuit Spiti" className={inputCls} value={f.tourTitle} onChange={(e) => setF({ ...f, tourTitle: e.target.value })} />
-        </div>
-        <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Departure Date *</label>
-          <input required placeholder="YYYY-MM-DD" className={inputCls} value={f.departureDate} onChange={(e) => setF({ ...f, departureDate: e.target.value })} />
-        </div>
+        <DeparturePicker departures={departures} value={dep} onChange={setDep} />
         <div>
           <label className="block text-[11px] font-bold text-slate-700 mb-1">Hotel or Camp Name *</label>
           <input required placeholder="e.g. Grand Himalayan Boutique Chalet" className={inputCls} value={f.hotelName} onChange={(e) => setF({ ...f, hotelName: e.target.value })} />
@@ -818,18 +889,23 @@ function HotelForm({
 
 function VehicleForm({
   initial,
+  departures,
   onCancel,
   onSave,
 }: {
   initial?: VehicleAssignment | null;
+  departures: Departure[];
   onCancel: () => void;
   onSave: (d: any) => void;
 }) {
+  const [dep, setDep] = useState<DepartureFields>(
+    initial
+      ? { departureId: initial.departureId || "", tourId: initial.tourId, tourTitle: initial.tourTitle, departureDate: initial.departureDate }
+      : { departureId: "", tourId: null, tourTitle: "", departureDate: "" }
+  );
   const [f, setF] = useState(
     initial
       ? {
-          tourTitle: initial.tourTitle,
-          departureDate: initial.departureDate,
           vehicleType: initial.vehicleType,
           vehicleNumber: initial.vehicleNumber,
           driverName: initial.driverName,
@@ -839,8 +915,6 @@ function VehicleForm({
           notes: initial.notes || "",
         }
       : {
-          tourTitle: "",
-          departureDate: "",
           vehicleType: "",
           vehicleNumber: "",
           driverName: "",
@@ -856,21 +930,15 @@ function VehicleForm({
       title={initial ? "Edit Vehicle Assignment" : "Add Vehicle Assignment"}
       subtitle={initial ? `Updating fleet assignment for ${initial.vehicleType}` : "Assign transport vehicle & driver"}
       onCancel={onCancel}
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        onSave({ ...f, tourId: initial?.tourId ?? null });
+        const resolved = await resolveDeparture(dep);
+        onSave({ ...f, ...resolved });
       }}
       saveLabel={initial ? "Save Changes" : "Assign Vehicle"}
     >
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Tour / Departure Title *</label>
-          <input required placeholder="e.g. Ladakh Road Trip" className={inputCls} value={f.tourTitle} onChange={(e) => setF({ ...f, tourTitle: e.target.value })} />
-        </div>
-        <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Departure Date *</label>
-          <input required placeholder="YYYY-MM-DD" className={inputCls} value={f.departureDate} onChange={(e) => setF({ ...f, departureDate: e.target.value })} />
-        </div>
+        <DeparturePicker departures={departures} value={dep} onChange={setDep} />
         <div>
           <label className="block text-[11px] font-bold text-slate-700 mb-1">Vehicle Type / Model *</label>
           <input required placeholder="e.g. Force Urbania 12-Seater, Innova Crysta" className={inputCls} value={f.vehicleType} onChange={(e) => setF({ ...f, vehicleType: e.target.value })} />
@@ -1073,21 +1141,26 @@ function VoucherForm({
 
 function CaptainAssignForm({
   initial,
+  departures,
   captains,
   bookings,
   onCancel,
   onSave,
 }: {
   initial?: TripAssignment | null;
+  departures: Departure[];
   captains: { id: string; fullName: string }[];
   bookings: Booking[];
   onCancel: () => void;
   onSave: (d: any) => void;
 }) {
+  const [dep, setDep] = useState<DepartureFields>(
+    initial
+      ? { departureId: initial.departureId || "", tourId: initial.tourId, tourTitle: initial.tourTitle, departureDate: initial.departureDate }
+      : { departureId: "", tourId: null, tourTitle: "", departureDate: "" }
+  );
   const [f, setF] = useState({
     captainId: initial?.captainId || "",
-    tourTitle: initial?.tourTitle || "",
-    departureDate: initial?.departureDate || "",
     status: (initial?.status || "scheduled") as TripAssignment["status"],
   });
 
@@ -1096,13 +1169,15 @@ function CaptainAssignForm({
       title={initial ? "Edit Trip Captain Assignment" : "Assign Trip Captain"}
       subtitle={initial ? `Managing lead captain assignment for ${initial.tourTitle}` : "Designate a certified Trip Captain to lead a departure"}
       onCancel={onCancel}
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
+        const resolved = await resolveDeparture(dep);
         onSave({
           captainId: f.captainId,
-          tourId: initial?.tourId ?? null,
-          tourTitle: f.tourTitle,
-          departureDate: f.departureDate,
+          tourId: resolved.tourId,
+          tourTitle: resolved.tourTitle,
+          departureDate: resolved.departureDate,
+          departureId: resolved.departureId,
           bookingIds: initial?.bookingIds || [],
           status: f.status,
         });
@@ -1119,14 +1194,7 @@ function CaptainAssignForm({
             ))}
           </select>
         </div>
-        <div className="col-span-2">
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Tour / Departure Title *</label>
-          <input required placeholder="Tour or circuit title" className={inputCls} value={f.tourTitle} onChange={(e) => setF({ ...f, tourTitle: e.target.value })} />
-        </div>
-        <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Departure Date *</label>
-          <input required placeholder="YYYY-MM-DD" className={inputCls} value={f.departureDate} onChange={(e) => setF({ ...f, departureDate: e.target.value })} />
-        </div>
+        <DeparturePicker departures={departures} value={dep} onChange={setDep} />
         <div>
           <label className="block text-[11px] font-bold text-slate-700 mb-1">Trip Status</label>
           <select className={inputCls} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as any })}>

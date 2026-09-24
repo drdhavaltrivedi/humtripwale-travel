@@ -19,13 +19,16 @@ import {
 } from "lucide-react";
 import { DESTINATIONS_DATA } from "@/data/destinationsData";
 import { TOURS_DATA } from "@/data/toursData";
+import { useApp } from "@/context/AppContext";
 import TourCard from "@/components/tours/TourCard";
 
 export default function DestinationPage() {
   const params = useParams();
   const slug = params?.slug as string;
+  const { destinations } = useApp();
 
-  const dest = DESTINATIONS_DATA.find((d) => d.slug.toLowerCase() === slug?.toLowerCase());
+  const destinationsList = destinations && destinations.length > 0 ? destinations : DESTINATIONS_DATA;
+  const dest = destinationsList.find((d) => d.slug.toLowerCase() === slug?.toLowerCase());
 
   if (!dest) {
     return notFound();

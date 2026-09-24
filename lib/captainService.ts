@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient";
 
 export interface TripAssignment {
   id: string;
+  departureId?: string | null;
   captainId: string | null;
   tourId: string | null;
   tourTitle: string;
@@ -44,6 +45,7 @@ export async function fetchMyTrips(): Promise<TripAssignment[]> {
   }
   return data.map((row) => ({
     id: row.id,
+    departureId: row.departure_id,
     captainId: row.captain_id,
     tourId: row.tour_id,
     tourTitle: row.tour_title,
@@ -75,6 +77,7 @@ export async function updateTripAssignment(id: string, t: Partial<Omit<TripAssig
 // Operations/Admin only — assigns a captain to a departure.
 export async function createTripAssignment(t: Omit<TripAssignment, "id">): Promise<boolean> {
   const { error } = await supabase.from("trip_assignments").insert({
+    departure_id: t.departureId || null,
     captain_id: t.captainId,
     tour_id: t.tourId,
     tour_title: t.tourTitle,

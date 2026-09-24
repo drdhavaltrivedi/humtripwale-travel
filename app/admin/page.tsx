@@ -50,6 +50,7 @@ import { useApp, Lead, Booking } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import OperationsLogistics from "@/components/admin/OperationsLogistics";
 import TeamInvites from "@/components/admin/TeamInvites";
+import DestinationsManager from "@/components/admin/DestinationsManager";
 import { useRouter } from "next/navigation";
 import { TOURS_DATA, TourPackage } from "@/data/toursData";
 import { BLOGS_DATA, BlogPost } from "@/data/blogsData";
@@ -73,6 +74,10 @@ function AdminContent() {
     addBlog,
     updateBlog,
     deleteBlog,
+    destinations,
+    addDestination,
+    updateDestination,
+    deleteDestination,
     announcement,
     setAnnouncement
   } = useApp();
@@ -90,7 +95,7 @@ function AdminContent() {
   const [activeTab, setActiveTab] = useState<"kpi" | "crm" | "bookings" | "cms" | "tours" | "system" | "logistics" | "users">("kpi");
 
   // CMS Subtab State
-  const [cmsSubTab, setCmsSubTab] = useState<"tours" | "blogs" | "announcements">("tours");
+  const [cmsSubTab, setCmsSubTab] = useState<"tours" | "blogs" | "destinations" | "announcements">("tours");
 
   // Server proxy already blocks non-staff from this route; this is a
   // defense-in-depth client check that also kicks in on client-side nav.
@@ -1388,6 +1393,18 @@ function AdminContent() {
                 </button>
 
                 <button
+                  onClick={() => setCmsSubTab("destinations")}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    cmsSubTab === "destinations"
+                      ? "bg-[#0A192F] text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <MapPin className="w-3.5 h-3.5 text-[#FFA429]" />
+                  <span>Destinations ({destinations.length})</span>
+                </button>
+
+                <button
                   onClick={() => setCmsSubTab("announcements")}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                     cmsSubTab === "announcements"
@@ -1748,7 +1765,10 @@ function AdminContent() {
               </div>
             )}
 
-            {/* SUB-TAB 3: SITE ANNOUNCEMENTS CMS */}
+            {/* SUB-TAB 3: DESTINATIONS CMS */}
+            {cmsSubTab === "destinations" && <DestinationsManager />}
+
+            {/* SUB-TAB 4: SITE ANNOUNCEMENTS CMS */}
             {cmsSubTab === "announcements" && (
               <div className="max-w-2xl bg-[#FAF7F2] p-6 rounded-3xl border border-slate-200 space-y-5 text-xs">
                 <div className="flex items-center gap-2">

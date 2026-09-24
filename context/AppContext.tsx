@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { TOURS_DATA, TourPackage } from "@/data/toursData";
 import { BLOGS_DATA, BlogPost } from "@/data/blogsData";
+import { DESTINATIONS_DATA, DestinationItem } from "@/data/destinationsData";
 import {
   fetchToursFromDb,
   createTourInDb,
@@ -20,6 +21,8 @@ import {
   updateBlogInDb,
   deleteBlogFromDb,
 } from "@/lib/supabaseService";
+import { createVoucher } from "@/lib/operationsService";
+import { fetchDestinationsFromDb, createDestinationInDb, updateDestinationInDb, deleteDestinationFromDb } from "@/lib/destinationsService";
 
 export type UserRole = "guest" | "traveler" | "sales" | "admin" | "operations" | "trip_captain";
 
@@ -85,6 +88,10 @@ interface AppContextType {
   addBlog: (blog: BlogPost) => void;
   updateBlog: (blog: BlogPost) => void;
   deleteBlog: (blogId: string) => void;
+  destinations: DestinationItem[];
+  addDestination: (destination: DestinationItem) => void;
+  updateDestination: (destination: DestinationItem) => void;
+  deleteDestination: (destinationId: string) => void;
   announcement: string;
   setAnnouncement: (text: string) => void;
   toastMessage: string | null;
@@ -196,9 +203,23 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addBooking = (booking: Booking) => {
     setBookings((prev) => [booking, ...prev]);
-    createBookingInDb(booking).catch((err) =>
-      console.warn("Supabase createBooking notice:", err)
-    );
+    createBookingInDb(booking)
+      .then(() =>
+        // Auto-generate a full-trip voucher once the booking row exists —
+        // RLS lets the booking's own contact_email create this without staff.
+        createVoucher(
+          {
+            id: `VCH-${booking.id.replace(/[^0-9]/g, "") || Date.now().toString().slice(-6)}`,
+            bookingId: booking.id,
+            voucherType: "full_trip",
+            issuedTo: booking.travelerNames[0] || booking.contactEmail,
+            details: `${booking.tourTitle} — Departs ${booking.departureDate}, ${booking.travelersCount} traveler(s). Invoice #${booking.invoiceNumber}.`,
+            createdAt: new Date().toISOString(),
+          },
+          profile?.id || null
+        )
+      )
+      .catch((err) => console.warn("Supabase createBooking notice:", err));
     showToast("Booking Confirmed! Check your email and WhatsApp.");
   };
 
@@ -286,15 +307,28 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
     updateLeadStatus(leadId, "Won", `Converted to confirmed reservation #${bookingId}`);
     setBookings((prev) => [newBooking, ...prev]);
-    createBookingInDb(newBooking).catch((err) =>
-      console.warn("Supabase createBooking notice:", err)
-    );
+    createBookingInDb(newBooking)
+      .then(() =>
+        createVoucher(
+          {
+            id: `VCH-${bookingId.replace(/[^0-9]/g, "") || Date.now().toString().slice(-6)}`,
+            bookingId: newBooking.id,
+            voucherType: "full_trip",
+            issuedTo: newBooking.travelerNames[0] || newBooking.contactEmail,
+            details: `${newBooking.tourTitle} — Departs ${newBooking.departureDate}, ${newBooking.travelersCount} traveler(s). Invoice #${invoiceNumber}. Converted from lead ${leadId}.`,
+            createdAt: new Date().toISOString(),
+          },
+          profile?.id || null
+        )
+      )
+      .catch((err) => console.warn("Supabase createBooking notice:", err));
     showToast(`Lead converted to Confirmed Booking #${bookingId}! Invoice ready.`);
     return newBooking;
   };
 
   const [tours, setTours] = useState<TourPackage[]>(TOURS_DATA);
   const [blogs, setBlogs] = useState<BlogPost[]>(BLOGS_DATA);
+  const [destinations, setDestinations] = useState<DestinationItem[]>(DESTINATIONS_DATA);
   const [announcement, setAnnouncementState] = useState<string>(
     "🔥 Autumn & Diwali Expeditions Open! Flat ₹3,000 Off per group — Use code HIMALAYA2026"
   );
@@ -338,11 +372,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     // 2. Cloud sync from Supabase PostgreSQL
     async function syncCloudData() {
       try {
-        const [liveTours, liveLeads, liveBookings, liveBlogs] = await Promise.all([
+        const [liveTours, liveLeads, liveBookings, liveBlogs, liveDestinations] = await Promise.all([
           fetchToursFromDb(),
           fetchLeadsFromDb(),
           fetchBookingsFromDb(),
           fetchBlogsFromDb(),
+          fetchDestinationsFromDb(),
         ]);
 
         if (liveTours && liveTours.length > 0) {
@@ -365,6 +400,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           try {
             localStorage.setItem("humtrip_blogs_catalog", JSON.stringify(liveBlogs));
           } catch (e) {}
+        }
+
+        if (liveDestinations && liveDestinations.length > 0) {
+          setDestinations(liveDestinations);
         }
       } catch (err) {
         console.warn("Supabase live sync notice:", err);
@@ -447,6 +486,30 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     showToast("Travel guide deleted successfully.");
   };
 
+  const addDestination = (newDestination: DestinationItem) => {
+    setDestinations((prev) => [newDestination, ...prev]);
+    createDestinationInDb(newDestination).catch((err) =>
+      console.warn("Supabase createDestination notice:", err)
+    );
+    showToast(`Published destination guide: "${newDestination.name}"`);
+  };
+
+  const updateDestination = (updatedDestination: DestinationItem) => {
+    setDestinations((prev) => prev.map((d) => (d.id === updatedDestination.id ? updatedDestination : d)));
+    updateDestinationInDb(updatedDestination).catch((err) =>
+      console.warn("Supabase updateDestination notice:", err)
+    );
+    showToast(`Updated destination guide: "${updatedDestination.name}"`);
+  };
+
+  const deleteDestination = (destinationId: string) => {
+    setDestinations((prev) => prev.filter((d) => d.id !== destinationId));
+    deleteDestinationFromDb(destinationId).catch((err) =>
+      console.warn("Supabase deleteDestination notice:", err)
+    );
+    showToast("Destination guide deleted successfully.");
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -470,6 +533,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         addBlog,
         updateBlog,
         deleteBlog,
+        destinations,
+        addDestination,
+        updateDestination,
+        deleteDestination,
         announcement,
         setAnnouncement,
         toastMessage,

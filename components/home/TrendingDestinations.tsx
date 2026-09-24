@@ -5,8 +5,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import { DESTINATIONS_DATA } from "@/data/destinationsData";
+import { useApp } from "@/context/AppContext";
 
 export default function TrendingDestinations() {
+  const { destinations } = useApp();
+  const destinationsList = destinations && destinations.length > 0 ? destinations : DESTINATIONS_DATA;
+
   return (
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -24,7 +28,7 @@ export default function TrendingDestinations() {
 
         {/* Bento Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {DESTINATIONS_DATA.map((dest, idx) => (
+          {destinationsList.map((dest, idx) => (
             <Link
               key={dest.id}
               href={`/destinations/${dest.slug}`}

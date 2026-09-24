@@ -92,6 +92,7 @@ export async function fetchHotelAssignments(): Promise<HotelAssignment[]> {
   }
   return data.map((row) => ({
     id: row.id,
+    departureId: row.departure_id,
     tourId: row.tour_id,
     tourTitle: row.tour_title || "",
     departureDate: row.departure_date,
@@ -108,6 +109,7 @@ export async function fetchHotelAssignments(): Promise<HotelAssignment[]> {
 
 export async function createHotelAssignment(h: Omit<HotelAssignment, "id">): Promise<boolean> {
   const { error } = await supabase.from("hotel_assignments").insert({
+    departure_id: h.departureId || null,
     tour_id: h.tourId,
     tour_title: h.tourTitle,
     departure_date: h.departureDate,
@@ -157,6 +159,7 @@ export async function updateHotelAssignment(id: string, h: Omit<HotelAssignment,
   const { error } = await supabase
     .from("hotel_assignments")
     .update({
+      departure_id: h.departureId || null,
       tour_id: h.tourId,
       tour_title: h.tourTitle,
       departure_date: h.departureDate,
@@ -194,6 +197,7 @@ export async function fetchVehicleAssignments(): Promise<VehicleAssignment[]> {
   }
   return data.map((row) => ({
     id: row.id,
+    departureId: row.departure_id,
     tourId: row.tour_id,
     tourTitle: row.tour_title || "",
     departureDate: row.departure_date,
@@ -209,6 +213,7 @@ export async function fetchVehicleAssignments(): Promise<VehicleAssignment[]> {
 
 export async function createVehicleAssignment(v: Omit<VehicleAssignment, "id">): Promise<boolean> {
   const { error } = await supabase.from("vehicle_assignments").insert({
+    departure_id: v.departureId || null,
     tour_id: v.tourId,
     tour_title: v.tourTitle,
     departure_date: v.departureDate,
@@ -258,6 +263,7 @@ export async function updateVehicleAssignment(id: string, v: Omit<VehicleAssignm
   const { error } = await supabase
     .from("vehicle_assignments")
     .update({
+      departure_id: v.departureId || null,
       tour_id: v.tourId,
       tour_title: v.tourTitle,
       departure_date: v.departureDate,
@@ -369,14 +375,14 @@ export async function fetchVouchers(): Promise<Voucher[]> {
   }));
 }
 
-export async function createVoucher(v: Voucher, issuedBy: string): Promise<boolean> {
+export async function createVoucher(v: Voucher, issuedBy: string | null): Promise<boolean> {
   const { error } = await supabase.from("vouchers").insert({
     id: v.id,
     booking_id: v.bookingId,
     voucher_type: v.voucherType,
     issued_to: v.issuedTo,
     details: v.details,
-    issued_by: issuedBy,
+    issued_by: issuedBy || null,
   });
   if (error) console.warn("createVoucher error:", error.message);
   return !error;

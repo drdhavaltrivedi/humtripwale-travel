@@ -10,6 +10,8 @@ export interface DestinationItem {
   idealDuration: string;
   avgBudget: string;
   attractions: { name: string; desc: string; icon: string }[];
+  seoTitle?: string;
+  seoDescription?: string;
 }
 
 export const DESTINATIONS_DATA: DestinationItem[] = [
